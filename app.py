@@ -12,6 +12,7 @@ import json
 import re
 import hashlib
 import os
+import plotly.express as px
 
 st.set_page_config(
     page_title="Ethiopian Research Collaboration Portal",
@@ -43,6 +44,19 @@ def init_user_db():
         st.session_state.logged_in = False
     if 'current_user' not in st.session_state:
         st.session_state.current_user = None
+    if 'notifications' not in st.session_state:
+        st.session_state.notifications = []
+    if 'forum_posts' not in st.session_state:
+        st.session_state.forum_posts = []
+
+def add_notification(message, notification_type="info"):
+    st.session_state.notifications.append({
+        "id": len(st.session_state.notifications),
+        "message": message,
+        "type": notification_type,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "read": False
+    })
 
 def login_user(username, password):
     """Authenticate a user"""
@@ -57,6 +71,7 @@ def login_user(username, password):
     if verify_password(password, stored_hash):
         st.session_state.logged_in = True
         st.session_state.current_user = username
+        add_notification(f"Welcome back, {username.split('@')[0].replace('.', ' ').title()}!", "success")
         return True, "✅ Login successful!"
     else:
         return False, "❌ Incorrect password. Please try again."
@@ -88,10 +103,11 @@ def register_user(username, password, confirm_password):
     
     # Register new user
     st.session_state.user_db[username] = hash_password(password)
+    add_notification(f"🎉 New user registered: {username}", "success")
     return True, "✅ Registration successful! You can now login."
 
 # ===================================================================
-# CSS STYLES - WHITE BACKGROUND WITH NATURE HEADER
+# CSS STYLES - ORIGINAL WITH NATURE BACKGROUND HEADER
 # ===================================================================
 
 st.markdown("""
@@ -1188,6 +1204,77 @@ st.markdown("""
         font-size: 1rem !important;
         font-weight: 400 !important;
     }
+    
+    /* Notification styles */
+    .notification-badge {
+        background: #EA4335 !important;
+        color: #FFFFFF !important;
+        border-radius: 50%;
+        padding: 2px 8px;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        margin-left: 5px;
+    }
+    
+    .notification-item {
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        border-left: 4px solid #1A73E8;
+        background: #F8F9FA;
+    }
+    
+    .notification-item.unread {
+        background: #E8F0FE;
+        border-left-color: #EA4335;
+    }
+    
+    .notification-item .notification-time {
+        color: #5F6368 !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .forum-post {
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .forum-post .post-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .forum-post .post-title {
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+        color: #1A73E8 !important;
+    }
+    
+    .forum-post .post-meta {
+        color: #5F6368 !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .forum-post .post-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 0.5rem;
+    }
+    
+    .forum-post .post-tags .tag {
+        background: #E8F0FE !important;
+        color: #1A73E8 !important;
+        padding: 2px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1701,7 +1788,7 @@ RESEARCHER_PROFILES = {
     "researcher_3": {
         "id": "A003",
         "name": "Dr. D.Sc. Abebe Geletu",
-        "title": "German Research Chair- Professor of Mathematics",
+        "title": "German Research Chair / Full Professor of Mathematics",
         "institution": "AIMS Rwanda",
         "department": "Mathematics and Computer Science",
         "education": "D.Sc. (Habil.) in Systems Optimization, TU Ilmenau; Ph.D. in Numerical Optimization, TU Ilmenau; M.Sc. Applied Mathematics, AAU; B.Sc. Mathematics, AAU",
@@ -1757,7 +1844,7 @@ RESEARCHER_PROFILES = {
         ],
         "collaborating_institutions": ["TU Ilmenau (Germany)", "Addis Ababa University", "Haramaya University", "Hawassa University", "AIMS Rwanda"],
         "professional_memberships": ["Ethiopian Mathematical Society", "African Mathematical Union", "SIAM"],
-        "biography": "Dr. D.Sc. Abebe Geletu is the German Research Chair and Professor of Mathematics at AIMS Rwanda. His research focuses on systems optimization for sustainable resources utilization in Africa, AI/data-driven approaches, and multidisciplinary engineering problems. He previously held academic positions at TU Ilmenau, Germany for over 20 years.",
+        "biography": "Dr. D.Sc. Abebe Geletu is the German Research Chair and Full Professor of Mathematics at AIMS Rwanda. His research focuses on systems optimization for sustainable resources utilization in Africa, AI/data-driven approaches, and multidisciplinary engineering problems. He previously held academic positions at TU Ilmenau, Germany for over 20 years.",
         "education_details": [
             {"degree": "D.Sc. (Habil.) in Systems Optimization", "institution": "TU Ilmenau, Germany", "year": "2015"},
             {"degree": "Ph.D. in Numerical Optimization", "institution": "TU Ilmenau, Germany", "year": "2004"},
@@ -2119,7 +2206,75 @@ RESEARCHER_PROFILES = {
 }
 
 # ===================================================================
-# FUNCTIONS
+# FORUM FUNCTIONS - NEW
+# ===================================================================
+
+def create_forum_post(title, content, author, tags=[]):
+    post = {
+        "id": len(st.session_state.forum_posts) + 1,
+        "title": title,
+        "content": content,
+        "author": author,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "tags": [t.strip() for t in tags.split(",")] if tags else [],
+        "comments": [],
+        "likes": 0,
+        "views": 0
+    }
+    st.session_state.forum_posts.append(post)
+    add_notification(f"📝 New forum post: '{title}' by {author}", "info")
+    return post
+
+def add_comment_to_post(post_id, author, content):
+    for post in st.session_state.forum_posts:
+        if post["id"] == post_id:
+            comment = {
+                "author": author,
+                "content": content,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+            }
+            post["comments"].append(comment)
+            add_notification(f"💬 New comment on '{post['title']}' by {author}", "info")
+            break
+
+def like_post(post_id):
+    for post in st.session_state.forum_posts:
+        if post["id"] == post_id:
+            post["likes"] += 1
+            break
+
+# ===================================================================
+# NOTIFICATION FUNCTIONS - NEW
+# ===================================================================
+
+def show_notification_center():
+    unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("### 🔔 Notifications")
+        if unread > 0:
+            st.warning(f"📌 {unread} new notification(s)")
+    with col2:
+        if st.button("Mark All Read"):
+            for n in st.session_state.notifications:
+                n['read'] = True
+            st.rerun()
+    
+    if st.session_state.notifications:
+        for note in reversed(st.session_state.notifications[-10:]):
+            unread_class = "unread" if not note.get('read', False) else ""
+            st.markdown(f"""
+            <div class="notification-item {unread_class}">
+                <strong>{note['message']}</strong>
+                <div class="notification-time">⏱ {note['time']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No notifications")
+
+# ===================================================================
+# FUNCTIONS - ORIGINAL
 # ===================================================================
 
 @st.cache_data
@@ -2220,7 +2375,7 @@ def generate_request_letter(student_name, student_institution, professor_name, p
     }
 
 # ===================================================================
-# LOGIN PAGE
+# LOGIN PAGE - ORIGINAL
 # ===================================================================
 
 def show_login_page():
@@ -2321,7 +2476,7 @@ def show_login_page():
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ===================================================================
-# MAIN APPLICATION
+# MAIN APPLICATION - ORIGINAL WITH NEW FEATURES
 # ===================================================================
 
 def main():
@@ -2351,7 +2506,7 @@ def main():
     current_user = st.session_state.current_user
     user_display_name = current_user.split('@')[0].replace('.', ' ').title() if current_user else "User"
     
-    # SIDEBAR
+    # SIDEBAR - ORIGINAL WITH NAVIGATION
     with st.sidebar:
         st.markdown("### Research Portal")
         st.markdown("---")
@@ -2363,6 +2518,17 @@ def main():
             <p style="margin:0;font-size:0.85rem;color:#5F6368;">{current_user}</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Notification count
+        unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
+        nav_options = ["🏠 Home", "🔍 Find Researchers", "💬 Forum", "📊 Analytics", "📋 My Requests"]
+        if unread > 0:
+            nav_options.append(f"📨 Notifications <span class='notification-badge'>{unread}</span>")
+        else:
+            nav_options.append("📨 Notifications")
+        
+        selected_page = st.radio("Navigation", nav_options, index=0)
+        st.session_state.current_page = selected_page
         
         if st.button("🚪 Logout", use_container_width=True):
             logout_user()
@@ -2381,7 +2547,10 @@ def main():
         show_about_page()
         return
     
-    # HEADER
+    # Get current page
+    current_page = getattr(st.session_state, 'current_page', "🏠 Home")
+    
+    # HEADER - ORIGINAL WITH NATURE BACKGROUND
     available_profs = len(academicians_df[academicians_df['available_for_collaboration'] == True])
     total_publications = sum([len(p.get('publications', [])) for _, p in academicians_df.iterrows()])
     total_completed_phds = sum([p.get('completed_phds', 0) for _, p in academicians_df.iterrows()])
@@ -2465,7 +2634,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # STATUS BAR
+    # STATUS BAR - ORIGINAL
     st.markdown(f"""
     <div class="status-bar">
         <div>
@@ -2478,11 +2647,10 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # TABS
-    tab1, tab2, tab3 = st.tabs(["Find Professionals", "Request Collaboration", "My Requests"])
-    
-    # TAB 1: FIND PROFESSIONALS
-    with tab1:
+    # ===================================================================
+    # PAGE: HOME / FIND RESEARCHERS - ORIGINAL
+    # ===================================================================
+    if current_page == "🏠 Home" or current_page == "🔍 Find Researchers":
         st.markdown("### Find Academic Professionals")
         
         with st.container():
@@ -2561,7 +2729,6 @@ def main():
                                 st.write(f"• {pub}")
                 
                 with col2:
-                    trust_score = prof.get('trust_score', 0)
                     st.markdown(f"""
                     <div style="background:#F8F9FA;border:1px solid #E8EAED;border-radius:12px;padding:1.5rem;">
                         <h4 style="color:#202124;">📬 Contact</h4>
@@ -2581,8 +2748,10 @@ def main():
                     else:
                         st.warning("No available slots")
     
-    # TAB 2: REQUEST COLLABORATION
-    with tab2:
+    # ===================================================================
+    # PAGE: REQUEST COLLABORATION - ORIGINAL
+    # ===================================================================
+    if current_page == "📋 My Requests" or st.session_state.selected_professor:
         st.markdown("### Request Collaboration")
         
         if st.session_state.selected_professor:
@@ -2637,7 +2806,9 @@ def main():
                         st.session_state.last_request = request
                         st.session_state.show_letter = True
                         
+                        add_notification(f"📩 Collaboration request submitted to {prof['name']}", "success")
                         st.success(f"✅ Request submitted successfully to {prof['name']}!")
+                        st.balloons()
                         
                         st.markdown(f"""
                         <div class="letter-box">
@@ -2656,9 +2827,8 @@ def main():
                         """, unsafe_allow_html=True)
         else:
             st.info("👈 Please go to 'Find Professionals' and click 'Request Collaboration'")
-    
-    # TAB 3: MY REQUESTS
-    with tab3:
+        
+        # Show existing requests
         st.markdown("### My Collaboration Requests")
         
         if not st.session_state.requests:
@@ -2674,6 +2844,164 @@ def main():
                         <p><b>Status:</b> <span style="color:#1A73E8;font-weight:600;">{req['status']}</span></p>
                     </div>
                     """, unsafe_allow_html=True)
+    
+    # ===================================================================
+    # PAGE: FORUM - NEW
+    # ===================================================================
+    if current_page == "💬 Forum":
+        st.markdown("### 💬 Research Discussion Forum")
+        st.caption("Share ideas, discuss research, and connect with fellow researchers.")
+        
+        with st.expander("➕ Create New Post", expanded=False):
+            with st.form("new_post"):
+                title = st.text_input("Title", placeholder="Enter your post title...")
+                content = st.text_area("Content", height=150, placeholder="Share your research ideas, questions, or insights...")
+                tags = st.text_input("Tags (comma separated)", placeholder="e.g., optimization, machine learning, epidemiology")
+                submitted = st.form_submit_button("📝 Publish Post", use_container_width=True)
+                
+                if submitted and title and content:
+                    create_forum_post(title, content, user_display_name, tags)
+                    st.success("✅ Post published successfully!")
+                    st.rerun()
+                elif submitted:
+                    st.error("❌ Please enter both title and content.")
+        
+        if st.session_state.forum_posts:
+            st.markdown(f"### 📝 Recent Posts ({len(st.session_state.forum_posts)} total)")
+            
+            for post in reversed(st.session_state.forum_posts):
+                with st.expander(f"📌 {post['title']} - by {post['author']}", expanded=False):
+                    st.markdown(f"""
+                    <div class="forum-post">
+                        <div class="post-header">
+                            <span class="post-title">{post['title']}</span>
+                            <span class="post-meta">🕐 {post['date']} · ❤️ {post['likes']} likes</span>
+                        </div>
+                        <div style="padding:0.5rem 0;border-top:1px solid #E8EAED;border-bottom:1px solid #E8EAED;">
+                            {post['content']}
+                        </div>
+                        <div class="post-tags">
+                            {"".join(f'<span class="tag">#{tag}</span>' for tag in post['tags'])}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([1, 5])
+                    with col1:
+                        if st.button(f"❤️ {post['likes']}", key=f"like_{post['id']}"):
+                            like_post(post['id'])
+                            st.rerun()
+                    
+                    st.markdown("---")
+                    st.markdown("#### 💬 Comments")
+                    if post['comments']:
+                        for comment in post['comments']:
+                            st.markdown(f"""
+                            <div style="background:#F8F9FA;padding:0.75rem;border-radius:8px;margin-bottom:0.5rem;border-left:3px solid #1A73E8;">
+                                <strong>{comment['author']}</strong> <span style="color:#5F6368;font-size:0.8rem;">({comment['date']})</span>
+                                <p style="margin:0.2rem 0 0 0;">{comment['content']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.caption("No comments yet. Be the first to comment!")
+                    
+                    with st.form(f"comment_form_{post['id']}"):
+                        comment_content = st.text_area("Add a comment", key=f"comment_{post['id']}", placeholder="Share your thoughts...")
+                        submitted = st.form_submit_button("💬 Submit Comment", use_container_width=True)
+                        if submitted and comment_content:
+                            add_comment_to_post(post['id'], user_display_name, comment_content)
+                            st.success("Comment added!")
+                            st.rerun()
+                        elif submitted:
+                            st.error("❌ Please enter a comment.")
+        else:
+            st.info("No posts yet. Start a discussion! 🚀")
+    
+    # ===================================================================
+    # PAGE: NOTIFICATIONS - NEW
+    # ===================================================================
+    if "📨 Notifications" in current_page:
+        show_notification_center()
+    
+    # ===================================================================
+    # PAGE: ANALYTICS - NEW
+    # ===================================================================
+    if current_page == "📊 Analytics":
+        st.markdown("### 📊 Research Impact Dashboard")
+        
+        pub_data = []
+        for _, prof in academicians_df.iterrows():
+            pub_data.append({
+                'name': prof['name'].split()[1] if len(prof['name'].split()) > 1 else prof['name'],
+                'publications': len(prof.get('publications', [])),
+                'citations': prof.get('total_citations', 0),
+                'h_index': prof.get('h_index', 0),
+                'trust_score': prof.get('trust_score', 0)
+            })
+        
+        df_pub = pd.DataFrame(pub_data)
+        
+        if not df_pub.empty:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig = px.bar(df_pub, 
+                            x='name', 
+                            y='publications',
+                            title='Publications by Researcher',
+                            color='publications',
+                            color_continuous_scale='Greens',
+                            text='publications')
+                fig.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                fig2 = px.scatter(df_pub,
+                                 x='publications',
+                                 y='citations',
+                                 size='h_index',
+                                 text='name',
+                                 title='Publications vs Citations',
+                                 color='trust_score',
+                                 color_continuous_scale='Viridis')
+                fig2.update_layout(height=400)
+                st.plotly_chart(fig2, use_container_width=True)
+            
+            col3, col4 = st.columns(2)
+            
+            with col3:
+                fig3 = px.bar(df_pub,
+                            x='name',
+                            y='h_index',
+                            title='h-index by Researcher',
+                            color='h_index',
+                            color_continuous_scale='Blues',
+                            text='h_index')
+                fig3.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig3, use_container_width=True)
+            
+            with col4:
+                fig4 = px.bar(df_pub,
+                            x='name',
+                            y='trust_score',
+                            title='Trust Score by Researcher',
+                            color='trust_score',
+                            color_continuous_scale='Oranges',
+                            text='trust_score')
+                fig4.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig4, use_container_width=True)
+            
+            st.markdown("#### 📊 Summary Statistics")
+            col5, col6, col7, col8 = st.columns(4)
+            
+            with col5:
+                st.metric("Total Publications", df_pub['publications'].sum())
+            with col6:
+                st.metric("Total Citations", df_pub['citations'].sum())
+            with col7:
+                st.metric("Average h-index", f"{df_pub['h_index'].mean():.1f}")
+            with col8:
+                st.metric("Average Trust Score", f"{df_pub['trust_score'].mean():.1f}%")
 
 if __name__ == "__main__":
     main()

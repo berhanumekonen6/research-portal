@@ -1,18 +1,21 @@
 # ===================================================================
 # ETHIOPIAN ACADEMIC PORTAL - RESEARCH COLLABORATION SYSTEM
-# White Theme with Nature Background Header
-# Dr. Berhanu Mekonen (PhD), Arba Minch University, August 4, 2026
+# ENHANCED VERSION WITH ALL RECOMMENDATIONS
+# Dr. Berhanu Mekonen (PhD), Arba Minch University, August 14, 2026
 # ===================================================================
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import re
 import hashlib
 import os
 import plotly.express as px
+import plotly.graph_objects as go
+from collections import Counter
+import random
 
 st.set_page_config(
     page_title="Ethiopian Research Collaboration Portal",
@@ -26,18 +29,14 @@ st.set_page_config(
 # ===================================================================
 
 def hash_password(password):
-    """Hash a password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_password(password, hashed):
-    """Verify a password against its hash"""
     return hash_password(password) == hashed
 
-# No default users - all users must register
 DEFAULT_USERS = {}
 
 def init_user_db():
-    """Initialize user database in session state"""
     if 'user_db' not in st.session_state:
         st.session_state.user_db = DEFAULT_USERS.copy()
     if 'logged_in' not in st.session_state:
@@ -48,66 +47,88 @@ def init_user_db():
         st.session_state.notifications = []
     if 'forum_posts' not in st.session_state:
         st.session_state.forum_posts = []
+    if 'chat_messages' not in st.session_state:
+        st.session_state.chat_messages = []
+    if 'feedback' not in st.session_state:
+        st.session_state.feedback = []
+    if 'user_points' not in st.session_state:
+        st.session_state.user_points = {}
+    if 'user_badges' not in st.session_state:
+        st.session_state.user_badges = {}
+    if 'events' not in st.session_state:
+        st.session_state.events = []
+    if 'mentorships' not in st.session_state:
+        st.session_state.mentorships = []
+    if 'grants' not in st.session_state:
+        st.session_state.grants = []
+    if 'papers' not in st.session_state:
+        st.session_state.papers = []
+    if 'user_profiles' not in st.session_state:
+        st.session_state.user_profiles = {}
+    if 'onboarding_complete' not in st.session_state:
+        st.session_state.onboarding_complete = False
+    if 'onboarding_step' not in st.session_state:
+        st.session_state.onboarding_step = 1
 
-def add_notification(message, notification_type="info"):
+def add_notification(message, notification_type="info", link=None):
     st.session_state.notifications.append({
         "id": len(st.session_state.notifications),
         "message": message,
         "type": notification_type,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "read": False
+        "read": False,
+        "link": link
     })
 
+def add_points(username, points, action):
+    if username not in st.session_state.user_points:
+        st.session_state.user_points[username] = 0
+    st.session_state.user_points[username] += points
+    st.session_state.user_points[f"{username}_last_action"] = action
+    add_notification(f"⭐ +{points} points for {action}!", "success")
+
+def add_badge(username, badge_name):
+    if username not in st.session_state.user_badges:
+        st.session_state.user_badges[username] = []
+    if badge_name not in st.session_state.user_badges[username]:
+        st.session_state.user_badges[username].append(badge_name)
+        add_notification(f"🏅 New badge earned: {badge_name}!", "success")
+
 def login_user(username, password):
-    """Authenticate a user"""
     init_user_db()
-    
-    # Check if username exists
     if username not in st.session_state.user_db:
         return False, "❌ Username not found. Please register first."
-    
-    # Verify password
     stored_hash = st.session_state.user_db[username]
     if verify_password(password, stored_hash):
         st.session_state.logged_in = True
         st.session_state.current_user = username
-        add_notification(f"Welcome back, {username.split('@')[0].replace('.', ' ').title()}!", "success")
+        display_name = username.split('@')[0].replace('.', ' ').title()
+        add_notification(f"Welcome back, {display_name}!", "success")
+        add_points(username, 5, "Daily login")
         return True, "✅ Login successful!"
     else:
         return False, "❌ Incorrect password. Please try again."
 
 def logout_user():
-    """Log out the current user"""
     st.session_state.logged_in = False
     st.session_state.current_user = None
 
 def register_user(username, password, confirm_password):
-    """Register a new user"""
     init_user_db()
-    
-    # Validate username format
     if not username.endswith("@amu.edu.et"):
         return False, "❌ Username must end with @amu.edu.et"
-    
-    # Check if user already exists
     if username in st.session_state.user_db:
         return False, "❌ Username already exists. Please choose a different one."
-    
-    # Check password match
     if password != confirm_password:
         return False, "❌ Passwords do not match."
-    
-    # Check password strength (at least 6 characters)
     if len(password) < 6:
         return False, "❌ Password must be at least 6 characters long."
-    
-    # Register new user
     st.session_state.user_db[username] = hash_password(password)
     add_notification(f"🎉 New user registered: {username}", "success")
     return True, "✅ Registration successful! You can now login."
 
 # ===================================================================
-# CSS STYLES - ORIGINAL WITH NATURE BACKGROUND HEADER
+# CSS STYLES - ORIGINAL WITH NATURE BACKGROUND + RESPONSIVE
 # ===================================================================
 
 st.markdown("""
@@ -135,13 +156,46 @@ st.markdown("""
         color: #202124 !important;
     }
     
-    /* All text - dark for readability on white */
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .block-container { padding: 0.5rem 0.75rem !important; }
+        .main-header .logo-text h1 { font-size: 1.8rem !important; }
+        .main-header .logo-text .subtitle { font-size: 1rem !important; }
+        .main-header .header-stats .stat-item { min-width: 60px !important; padding: 8px 12px !important; }
+        .main-header .header-stats .stat-item .number { font-size: 1.2rem !important; }
+        .main-header .header-stats .stat-item .label { font-size: 0.7rem !important; }
+        .professor-card .info-grid { grid-template-columns: 1fr !important; }
+        .research-dropdown-content { min-width: 250px !important; right: -20px !important; }
+        .stat-grid { grid-template-columns: 1fr 1fr !important; }
+        .about-section .stat-grid { grid-template-columns: 1fr 1fr !important; }
+    }
+    
+    @media (max-width: 480px) {
+        .block-container { padding: 0.25rem 0.5rem !important; }
+        .main-header .logo-text h1 { font-size: 1.4rem !important; }
+        .main-header .header-content { flex-direction: column !important; align-items: flex-start !important; }
+        .main-header .header-right { width: 100% !important; flex-direction: column !important; align-items: stretch !important; }
+        .main-header .header-stats { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+        .main-header .stat-item { min-width: auto !important; padding: 6px 10px !important; }
+        .main-header .logo-icon { width: 50px !important; height: 50px !important; font-size: 1.8rem !important; }
+        .professor-card { padding: 1rem !important; }
+        .professor-card .card-header { flex-direction: column !important; }
+        .status-bar { flex-direction: column !important; padding: 0.8rem 1rem !important; }
+        .letter-box { padding: 1.5rem !important; }
+        .about-section { padding: 1.5rem !important; }
+        .about-section h1 { font-size: 2rem !important; }
+        .research-dropdown-content { min-width: 200px !important; right: 0 !important; }
+        .research-btn { font-size: 0.9rem !important; padding: 8px 16px !important; }
+        .login-container { padding: 1.5rem !important; margin: 1rem !important; }
+        .search-section { padding: 1rem !important; }
+    }
+    
+    /* All text - dark for readability */
     h1, h2, h3, h4, h5, h6, p, li, span, div, .stMarkdown, .stTextInput, .stSelectbox, .stButton {
         color: #202124 !important;
         font-weight: 500 !important;
     }
     
-    /* Headings - Google Blue/Gradient */
     h1 { 
         font-size: 3.5rem !important; 
         font-weight: 800 !important;
@@ -173,301 +227,6 @@ st.markdown("""
         font-weight: 400 !important;
         line-height: 2 !important;
         color: #202124 !important;
-    }
-    
-    /* LOGIN PAGE STYLES */
-    .login-container {
-        max-width: 500px;
-        margin: 3rem auto;
-        padding: 2.5rem;
-        background: #FFFFFF !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    }
-    
-    .login-container h1 {
-        text-align: center;
-        font-size: 2.5rem !important;
-        margin-bottom: 0.5rem;
-    }
-    
-    .login-container .login-subtitle {
-        text-align: center;
-        color: #5F6368 !important;
-        font-size: 1.1rem !important;
-        margin-bottom: 2rem;
-    }
-    
-    .login-container .login-error {
-        background: #FCE8E6 !important;
-        border: 1px solid #EA4335;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin: 0.5rem 0;
-        color: #EA4335 !important;
-        font-weight: 500 !important;
-    }
-    
-    .login-container .login-success {
-        background: #E6F4EA !important;
-        border: 1px solid #34A853;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin: 0.5rem 0;
-        color: #34A853 !important;
-        font-weight: 500 !important;
-    }
-    
-    .login-container .input-label {
-        font-weight: 600 !important;
-        color: #202124 !important;
-        font-size: 1rem !important;
-        display: block;
-        margin-bottom: 0.3rem;
-    }
-    
-    .login-container .input-hint {
-        color: #5F6368 !important;
-        font-size: 0.85rem !important;
-        font-weight: 400 !important;
-        display: block;
-        margin-top: 0.2rem;
-    }
-    
-    .login-container .register-link {
-        text-align: center;
-        margin-top: 1.5rem;
-        color: #5F6368 !important;
-        font-size: 1rem !important;
-    }
-    
-    .login-container .register-link a {
-        color: #1A73E8 !important;
-        font-weight: 600 !important;
-        text-decoration: none;
-        cursor: pointer;
-    }
-    
-    .login-container .register-link a:hover {
-        text-decoration: underline;
-    }
-    
-    .login-container .login-btn {
-        background: linear-gradient(135deg, #1A73E8, #4285F4) !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        padding: 0.9rem 2rem !important;
-        border-radius: 30px !important;
-        font-size: 1.2rem !important;
-        font-weight: 600 !important;
-        width: 100%;
-        cursor: pointer !important;
-        transition: all 0.3s !important;
-        box-shadow: 0 2px 8px rgba(26,115,232,0.25) !important;
-    }
-    
-    .login-container .login-btn:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 16px rgba(26,115,232,0.35) !important;
-    }
-    
-    .login-container .register-btn {
-        background: linear-gradient(135deg, #34A853, #2D9249) !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        padding: 0.9rem 2rem !important;
-        border-radius: 30px !important;
-        font-size: 1.2rem !important;
-        font-weight: 600 !important;
-        width: 100%;
-        cursor: pointer !important;
-        transition: all 0.3s !important;
-        box-shadow: 0 2px 8px rgba(52,168,83,0.25) !important;
-    }
-    
-    .login-container .register-btn:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 16px rgba(52,168,83,0.35) !important;
-    }
-    
-    .login-container .toggle-link {
-        background: none !important;
-        border: none !important;
-        color: #1A73E8 !important;
-        font-weight: 600 !important;
-        cursor: pointer !important;
-        padding: 0 !important;
-        text-decoration: underline !important;
-    }
-    
-    .login-container .toggle-link:hover {
-        color: #1557B0 !important;
-    }
-    
-    /* User info in header */
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        background: rgba(255, 255, 255, 0.9) !important;
-        padding: 8px 20px;
-        border-radius: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        backdrop-filter: blur(10px);
-    }
-    
-    .user-info .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #1A73E8, #4285F4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #FFFFFF;
-        font-weight: 700;
-        font-size: 1.2rem;
-    }
-    
-    .user-info .user-name {
-        color: #202124 !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-    }
-    
-    .user-info .logout-btn {
-        background: #FCE8E6 !important;
-        border: 1px solid #EA4335 !important;
-        color: #EA4335 !important;
-        padding: 6px 16px;
-        border-radius: 25px;
-        font-size: 0.85rem !important;
-        font-weight: 600 !important;
-        cursor: pointer !important;
-        transition: all 0.3s;
-    }
-    
-    .user-info .logout-btn:hover {
-        background: #EA4335 !important;
-        color: #FFFFFF !important;
-    }
-    
-    /* ABOUT SECTION - White Background */
-    .about-section {
-        background: #FFFFFF !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        padding: 2.5rem;
-        margin: 2rem 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
-    }
-    
-    .about-section h1 {
-        font-size: 3.5rem !important;
-        text-align: center;
-        background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
-        margin-bottom: 1.5rem;
-        font-weight: 800 !important;
-    }
-    
-    .about-section h2 {
-        font-size: 2.5rem !important;
-        color: #1A73E8 !important;
-        margin-top: 2rem;
-        border-bottom: 3px solid #E8F0FE;
-        padding-bottom: 0.5rem;
-        font-weight: 700 !important;
-    }
-    
-    .about-section h3 {
-        font-size: 1.8rem !important;
-        color: #1A73E8 !important;
-        margin-top: 1.5rem;
-        font-weight: 600 !important;
-    }
-    
-    .about-section .highlight-box {
-        background: #F8F9FA !important;
-        border-left: 4px solid #1A73E8;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-radius: 8px;
-    }
-    
-    .about-section .highlight-box p {
-        color: #202124 !important;
-    }
-    
-    .about-section .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin: 1.5rem 0;
-    }
-    
-    .about-section .stat-card {
-        background: #F8F9FA !important;
-        border: 1px solid #E8EAED;
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-        transition: all 0.3s;
-    }
-    
-    .about-section .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border-color: #1A73E8;
-    }
-    
-    .about-section .stat-card .number {
-        font-size: 3rem !important;
-        font-weight: 800 !important;
-        color: #1A73E8 !important;
-        display: block;
-    }
-    
-    .about-section .stat-card .label {
-        font-size: 1.1rem !important;
-        color: #5F6368 !important;
-        font-weight: 500 !important;
-    }
-    
-    .about-section ul {
-        color: #202124 !important;
-        font-size: 1.2rem !important;
-        font-weight: 400 !important;
-        line-height: 2.2;
-    }
-    
-    .about-section ul li {
-        color: #202124 !important;
-    }
-    
-    .about-section .quote {
-        font-style: italic;
-        font-size: 1.4rem !important;
-        font-weight: 500 !important;
-        color: #1A73E8 !important;
-        text-align: center;
-        padding: 1.5rem;
-        margin: 2rem 0;
-        border-top: 1px solid #E8EAED;
-        border-bottom: 1px solid #E8EAED;
-    }
-    
-    .about-section .footer-credit {
-        text-align: center;
-        margin-top: 2.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid #E8EAED;
-        color: #5F6368 !important;
-        font-size: 1rem !important;
-        font-weight: 400 !important;
     }
     
     /* ===== MAIN HEADER - NATURE BACKGROUND ===== */
@@ -624,7 +383,98 @@ st.markdown("""
         margin-top: 4px;
     }
     
-    /* Research Dropdown Button - Updated for dark header */
+    /* User info in header */
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.9) !important;
+        padding: 8px 20px;
+        border-radius: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(10px);
+    }
+    
+    .user-info .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1A73E8, #4285F4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    
+    .user-info .user-name {
+        color: #202124 !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+    
+    .ethiopian-stripe {
+        height: 5px;
+        background: linear-gradient(to right, #078930, #FCDD09, #DA121A);
+        border-radius: 3px;
+        margin: 12px 0 0 0;
+    }
+    
+    /* STATUS BAR */
+    .status-bar {
+        background: #F8F9FA !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 1.2rem 2.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .status-bar .status-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: inline-block;
+        animation: blink 2s infinite;
+    }
+    
+    .status-bar .status-dot.online { 
+        background: #34A853; 
+        box-shadow: 0 0 20px rgba(52,168,83,0.3);
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .status-bar .status-text {
+        color: #202124 !important;
+        font-size: 1.2rem !important;
+        font-weight: 500 !important;
+    }
+    
+    .status-bar .status-text .highlight-green {
+        color: #34A853 !important;
+        font-weight: 700 !important;
+    }
+    
+    .status-bar .live-badge {
+        background: linear-gradient(135deg, #1A73E8, #4285F4);
+        color: #FFFFFF !important;
+        padding: 6px 18px;
+        border-radius: 25px;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        border: none;
+    }
+    
+    /* Research Dropdown Button */
     .research-dropdown {
         position: relative;
         display: inline-block;
@@ -691,20 +541,6 @@ st.markdown("""
         display: block;
     }
     
-    .research-dropdown-content::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    .research-dropdown-content::-webkit-scrollbar-track {
-        background: #F8F9FA;
-        border-radius: 10px;
-    }
-    
-    .research-dropdown-content::-webkit-scrollbar-thumb {
-        background: #1A73E8;
-        border-radius: 10px;
-    }
-    
     .research-dropdown-content .dropdown-title {
         color: #1A73E8 !important;
         font-size: 1.2rem;
@@ -766,77 +602,7 @@ st.markdown("""
         transition: all 0.3s ease;
     }
     
-    .research-dropdown-content .link-item:hover .link-arrow {
-        transform: translateX(4px);
-    }
-    
-    .research-dropdown-content .divider {
-        border: none;
-        border-top: 1px solid #E8EAED;
-        margin: 4px 0;
-    }
-    
-    .ethiopian-stripe {
-        height: 5px;
-        background: linear-gradient(to right, #078930, #FCDD09, #DA121A);
-        border-radius: 3px;
-        margin: 12px 0 0 0;
-    }
-    
-    /* STATUS BAR - Google Style */
-    .status-bar {
-        background: #F8F9FA !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        padding: 1.2rem 2.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 15px;
-    }
-    
-    .status-bar .status-dot {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        display: inline-block;
-        animation: blink 2s infinite;
-    }
-    
-    .status-bar .status-dot.online { 
-        background: #34A853; 
-        box-shadow: 0 0 20px rgba(52,168,83,0.3);
-    }
-    
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    .status-bar .status-text {
-        color: #202124 !important;
-        font-size: 1.2rem !important;
-        font-weight: 500 !important;
-    }
-    
-    .status-bar .status-text .highlight-green {
-        color: #34A853 !important;
-        font-weight: 700 !important;
-    }
-    
-    .status-bar .live-badge {
-        background: linear-gradient(135deg, #1A73E8, #4285F4);
-        color: #FFFFFF !important;
-        padding: 6px 18px;
-        border-radius: 25px;
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-        border: none;
-    }
-    
-    /* PROFESSOR CARD - Google Style */
+    /* PROFESSOR CARD */
     .professor-card {
         background: #FFFFFF !important;
         border: 1px solid #E8EAED !important;
@@ -876,10 +642,6 @@ st.markdown("""
         color: #5F6368 !important;
     }
     
-    .professor-card .card-header .status-badge {
-        text-align: right;
-    }
-    
     .professor-card .badge-available { 
         background: #E6F4EA !important; 
         color: #34A853 !important; 
@@ -898,14 +660,6 @@ st.markdown("""
         border-radius: 25px;
         font-size: 0.9rem !important;
         font-weight: 600 !important;
-    }
-    
-    .professor-card .trust-score {
-        color: #FBBC04 !important;
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-        display: block;
-        margin-top: 4px;
     }
     
     .professor-card .badge-verified {
@@ -976,12 +730,6 @@ st.markdown("""
         border-color: #EA4335;
     }
     
-    .professor-card .social-link-scopus {
-        background: #FFF3E0 !important;
-        color: #FB8C00 !important;
-        border-color: #FB8C00;
-    }
-    
     .professor-card .info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1005,47 +753,93 @@ st.markdown("""
         font-weight: 500 !important;
     }
     
-    .professor-card .contact-box {
+    /* ABOUT SECTION */
+    .about-section {
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 2.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
+    }
+    
+    .about-section h1 {
+        font-size: 3.5rem !important;
+        text-align: center;
+        background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        margin-bottom: 1.5rem;
+        font-weight: 800 !important;
+    }
+    
+    .about-section .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin: 1.5rem 0;
+    }
+    
+    .about-section .stat-card {
         background: #F8F9FA !important;
         border: 1px solid #E8EAED;
         border-radius: 12px;
         padding: 1.5rem;
-        margin-top: 15px;
+        text-align: center;
+        transition: all 0.3s;
     }
     
-    .professor-card .contact-box h4 {
-        color: #202124 !important;
-        font-size: 1.2rem !important;
-        font-weight: 600 !important;
-        margin-bottom: 10px;
+    .about-section .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-color: #1A73E8;
     }
     
-    .professor-card .contact-box p {
-        margin: 4px 0;
-        font-size: 1rem !important;
-        font-weight: 500 !important;
-        color: #202124 !important;
-    }
-    
-    .professor-card .contact-box .stat-row {
-        display: flex;
-        gap: 20px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-    }
-    
-    .professor-card .contact-box .stat-row span {
-        color: #5F6368 !important;
-        font-size: 0.95rem !important;
-        font-weight: 500 !important;
-    }
-    
-    .professor-card .contact-box .stat-row .highlight-gold {
+    .about-section .stat-card .number {
+        font-size: 3rem !important;
+        font-weight: 800 !important;
         color: #1A73E8 !important;
-        font-weight: 700 !important;
+        display: block;
     }
     
-    /* LETTER BOX - Google Style */
+    .about-section .stat-card .label {
+        font-size: 1.1rem !important;
+        color: #5F6368 !important;
+        font-weight: 500 !important;
+    }
+    
+    .about-section .highlight-box {
+        background: #F8F9FA !important;
+        border-left: 4px solid #1A73E8;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+    }
+    
+    .about-section .quote {
+        font-style: italic;
+        font-size: 1.4rem !important;
+        font-weight: 500 !important;
+        color: #1A73E8 !important;
+        text-align: center;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        border-top: 1px solid #E8EAED;
+        border-bottom: 1px solid #E8EAED;
+    }
+    
+    .about-section .footer-credit {
+        text-align: center;
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #E8EAED;
+        color: #5F6368 !important;
+        font-size: 1rem !important;
+        font-weight: 400 !important;
+    }
+    
+    /* LETTER BOX */
     .letter-box {
         background: #FFFFFF !important;
         border: 2px solid #E8EAED;
@@ -1079,7 +873,27 @@ st.markdown("""
         padding-top: 2rem;
     }
     
-    /* BUTTONS - Google Style */
+    /* SEARCH SECTION */
+    .search-section {
+        background: #F8F9FA !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    /* LOGIN PAGE */
+    .login-container {
+        max-width: 500px;
+        margin: 3rem auto;
+        padding: 2.5rem;
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    
+    /* BUTTONS */
     .stButton > button {
         font-size: 1.2rem !important;
         font-weight: 600 !important;
@@ -1099,7 +913,7 @@ st.markdown("""
         box-shadow: 0 4px 16px rgba(26,115,232,0.35) !important;
     }
     
-    /* TABS - Google Style */
+    /* TABS */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         background: #F8F9FA !important;
@@ -1123,7 +937,7 @@ st.markdown("""
         border: 1px solid #E8EAED;
     }
     
-    /* INPUT FIELDS - Google Style */
+    /* INPUT FIELDS */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div > input {
@@ -1144,68 +958,7 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(26,115,232,0.15) !important;
     }
     
-    .stSelectbox > div > div {
-        background: #FFFFFF !important;
-        border-radius: 12px !important;
-        padding: 4px !important;
-    }
-    
-    .stSelectbox > div > div > div {
-        color: #202124 !important;
-        font-size: 1.1rem !important;
-        font-weight: 400 !important;
-    }
-    
-    /* SEARCH SECTION - Google Style */
-    .search-section {
-        background: #F8F9FA !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    
-    .search-section label {
-        font-size: 1.1rem !important;
-        font-weight: 500 !important;
-        color: #202124 !important;
-    }
-    
-    /* Checkbox - Google Style */
-    .stCheckbox label {
-        font-size: 1.1rem !important;
-        font-weight: 500 !important;
-        color: #202124 !important;
-    }
-    
-    .stCheckbox input[type="checkbox"] {
-        accent-color: #1A73E8 !important;
-    }
-    
-    /* Sidebar - Google Style */
-    .css-1d391kg, .css-12w0qpk, [data-testid="stSidebar"] {
-        background: #F8F9FA !important;
-        border-right: 1px solid #E8EAED !important;
-    }
-    
-    .css-1d391kg .stMarkdown,
-    [data-testid="stSidebar"] .stMarkdown {
-        color: #202124 !important;
-    }
-    
-    .css-1d391kg h1, .css-1d391kg h2, .css-1d391kg h3,
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #1A73E8 !important;
-    }
-    
-    /* Caption text */
-    .stCaption {
-        color: #5F6368 !important;
-        font-size: 1rem !important;
-        font-weight: 400 !important;
-    }
-    
-    /* Notification styles */
+    /* NOTIFICATIONS */
     .notification-badge {
         background: #EA4335 !important;
         color: #FFFFFF !important;
@@ -1229,11 +982,7 @@ st.markdown("""
         border-left-color: #EA4335;
     }
     
-    .notification-item .notification-time {
-        color: #5F6368 !important;
-        font-size: 0.8rem !important;
-    }
-    
+    /* FORUM */
     .forum-post {
         background: #FFFFFF !important;
         border: 1px solid #E8EAED;
@@ -1255,11 +1004,6 @@ st.markdown("""
         color: #1A73E8 !important;
     }
     
-    .forum-post .post-meta {
-        color: #5F6368 !important;
-        font-size: 0.9rem !important;
-    }
-    
     .forum-post .post-tags {
         display: flex;
         flex-wrap: wrap;
@@ -1275,395 +1019,120 @@ st.markdown("""
         font-size: 0.8rem !important;
         font-weight: 500 !important;
     }
+    
+    /* CHAT */
+    .chat-message {
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+        max-width: 80%;
+    }
+    
+    .chat-message.user {
+        background: #E8F0FE !important;
+        border: 1px solid #1A73E8;
+        margin-left: auto;
+    }
+    
+    .chat-message.other {
+        background: #F8F9FA !important;
+        border: 1px solid #E8EAED;
+    }
+    
+    .chat-message .chat-author {
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        color: #1A73E8 !important;
+    }
+    
+    .chat-message .chat-time {
+        color: #5F6368 !important;
+        font-size: 0.7rem !important;
+    }
+    
+    /* BADGES */
+    .badge-display {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0;
+    }
+    
+    .badge-item {
+        background: #E8F0FE !important;
+        border: 1px solid #1A73E8;
+        border-radius: 30px;
+        padding: 4px 16px;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        color: #1A73E8 !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .badge-item.gold {
+        background: #FFF8E1 !important;
+        border-color: #FFD700;
+        color: #F9A825 !important;
+    }
+    
+    /* FEEDBACK */
+    .feedback-item {
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .feedback-item .feedback-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .feedback-item .feedback-rating {
+        color: #FFD700;
+        font-size: 1.2rem;
+    }
+    
+    /* DASHBOARD CARDS */
+    .dashboard-card {
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        border-color: #1A73E8;
+    }
+    
+    .dashboard-card .card-value {
+        font-size: 2.8rem !important;
+        font-weight: 800 !important;
+        color: #1A73E8 !important;
+    }
+    
+    .dashboard-card .card-label {
+        color: #5F6368 !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ===================================================================
-# ABOUT PAGE
-# ===================================================================
-
-def show_about_page():
-    """Display detailed information about the Ethiopian Research Collaboration Portal"""
-    
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {
-                background: #FFFFFF !important;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                margin: 0;
-                padding: 20px;
-                color: #202124 !important;
-                overflow-y: auto !important;
-                height: 100% !important;
-            }
-            .about-section {
-                background: #FFFFFF !important;
-                border: 1px solid #E8EAED;
-                border-radius: 16px;
-                padding: 2.5rem;
-                margin: 0;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-                color: #202124 !important;
-                max-height: none !important;
-                overflow: visible !important;
-            }
-            .about-header {
-                display: flex;
-                align-items: center;
-                gap: 20px;
-                margin-bottom: 1.5rem;
-            }
-            .about-header .back-btn {
-                background: #F8F9FA !important;
-                border: 1px solid #DADCE0 !important;
-                color: #202124 !important;
-                padding: 10px 20px;
-                border-radius: 30px;
-                cursor: pointer;
-                font-size: 1rem;
-                font-weight: 500;
-                transition: all 0.3s ease;
-                white-space: nowrap;
-                text-decoration: none;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .about-header .back-btn:hover {
-                background: #E8F0FE !important;
-                border-color: #1A73E8 !important;
-                transform: translateX(-3px);
-            }
-            .about-header .back-btn .arrow {
-                display: inline-block;
-                transition: transform 0.3s ease;
-            }
-            .about-header .back-btn:hover .arrow {
-                transform: translateX(-3px);
-            }
-            .about-header h1 {
-                font-size: 3rem;
-                text-align: left;
-                background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                margin: 0;
-                flex: 1;
-                font-weight: 800 !important;
-            }
-            .about-section h2 {
-                font-size: 2.2rem;
-                color: #1A73E8 !important;
-                margin-top: 2rem;
-                border-bottom: 3px solid #E8F0FE;
-                padding-bottom: 0.5rem;
-                font-weight: 700 !important;
-            }
-            .about-section h3 {
-                font-size: 1.6rem;
-                color: #1A73E8 !important;
-                margin-top: 1.5rem;
-                font-weight: 600 !important;
-            }
-            .about-section .highlight-box {
-                background: #F8F9FA !important;
-                border-left: 4px solid #1A73E8;
-                padding: 1.5rem;
-                margin: 1rem 0;
-                border-radius: 8px;
-                color: #202124 !important;
-            }
-            .about-section .highlight-box p {
-                color: #202124 !important;
-                font-size: 1.2rem !important;
-                font-weight: 400 !important;
-            }
-            .about-section .stat-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 20px;
-                margin: 1.5rem 0;
-            }
-            .about-section .stat-card {
-                background: #F8F9FA !important;
-                border: 1px solid #E8EAED;
-                border-radius: 12px;
-                padding: 1.5rem;
-                text-align: center;
-                transition: all 0.3s;
-                color: #202124 !important;
-            }
-            .about-section .stat-card:hover {
-                transform: translateY(-3px);
-                border-color: #1A73E8 !important;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-            }
-            .about-section .stat-card .number {
-                font-size: 2.8rem;
-                font-weight: 800 !important;
-                color: #1A73E8 !important;
-                display: block;
-            }
-            .about-section .stat-card .label {
-                font-size: 1rem;
-                font-weight: 500 !important;
-                color: #5F6368 !important;
-            }
-            .about-section ul {
-                color: #202124 !important;
-                font-size: 1.1rem;
-                font-weight: 400 !important;
-                line-height: 2.2;
-                padding-left: 1.5rem;
-            }
-            .about-section ul li {
-                color: #202124 !important;
-            }
-            .about-section ul li b {
-                color: #202124 !important;
-                font-weight: 600 !important;
-            }
-            .about-section .quote {
-                font-style: italic;
-                font-size: 1.3rem;
-                font-weight: 500 !important;
-                color: #1A73E8 !important;
-                text-align: center;
-                padding: 1.5rem;
-                margin: 2rem 0;
-                border-top: 1px solid #E8EAED;
-                border-bottom: 1px solid #E8EAED;
-            }
-            .about-section .footer-credit {
-                text-align: center;
-                margin-top: 2.5rem;
-                padding-top: 1.5rem;
-                border-top: 1px solid #E8EAED;
-                color: #5F6368 !important;
-                font-size: 1rem;
-                font-weight: 400 !important;
-                font-style: italic;
-                letter-spacing: 0.5px;
-            }
-            .about-section .footer-credit .highlight-name {
-                color: #1A73E8 !important;
-                font-weight: 600 !important;
-            }
-            .about-section .footer-credit .highlight-institution {
-                color: #34A853 !important;
-                font-weight: 600 !important;
-            }
-            .about-section p {
-                color: #202124 !important;
-                font-size: 1.2rem !important;
-                font-weight: 400 !important;
-            }
-            .about-section span {
-                color: #202124 !important;
-            }
-            .about-section div {
-                color: #202124 !important;
-            }
-            
-            ::-webkit-scrollbar {
-                width: 10px;
-            }
-            ::-webkit-scrollbar-track {
-                background: #F8F9FA;
-                border-radius: 10px;
-            }
-            ::-webkit-scrollbar-thumb {
-                background: #1A73E8;
-                border-radius: 10px;
-            }
-            ::-webkit-scrollbar-thumb:hover {
-                background: #1557B0;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="about-section">
-            <div class="about-header">
-                <a href="#" onclick="window.parent.location.reload(); return false;" class="back-btn">
-                    <span class="arrow">←</span> Back to Home
-                </a>
-                <h1>🌿🇪🇹🎉 About This Research Collaboration Portal</h1>
-            </div>
-            
-            <div class="highlight-box">
-                <p style="font-size:1.2rem; color:#202124 !important; font-weight:400 !important; margin: 0;">
-                    <b style="color:#1A73E8 !important; font-weight:700 !important;">🎯 OVERALL PURPOSE</b><br>
-                    The <b style="color:#1A73E8 !important; font-weight:700 !important;">Ethiopian Research Collaboration Portal</b> is a digital platform designed to 
-                    <b style="color:#34A853 !important; font-weight:600 !important;">bridge the gap</b> between Ethiopian researchers, academic professionals, 
-                    and students by facilitating <b style="color:#1A73E8 !important; font-weight:600 !important;">meaningful academic collaborations</b>.
-                </p>
-            </div>
-            
-            <div class="stat-grid">
-                <div class="stat-card">
-                    <span class="number">8</span>
-                    <span class="label">👨‍🏫 Verified Professionals</span>
-                </div>
-                <div class="stat-card">
-                    <span class="number">10</span>
-                    <span class="label">🎓 Student Researchers</span>
-                </div>
-                <div class="stat-card">
-                    <span class="number">100+</span>
-                    <span class="label">📄 Publications</span>
-                </div>
-                <div class="stat-card">
-                    <span class="number">30+</span>
-                    <span class="label">🎯 PhDs Completed</span>
-                </div>
-            </div>
-            
-            <h2>📌 KEY IMPORTANCE &amp; BENEFITS</h2>
-            
-            <h3>1. 🌍 Connecting Ethiopian Researchers</h3>
-            <ul>
-                <li><b>Breaks down silos</b> between universities and institutions</li>
-                <li>Creates a <b>unified network</b> of Ethiopian academic professionals</li>
-                <li>Enables <b>cross-institutional collaboration</b></li>
-                <li>Promotes <b>knowledge sharing</b> across disciplines</li>
-            </ul>
-            
-            <h3>2. 🎓 Enhancing Research Supervision</h3>
-            <ul>
-                <li>PhD and MSc students can <b>find qualified supervisors</b></li>
-                <li>Matches students with <b>experts in their research field</b></li>
-                <li>Reduces the <b>time and effort</b> needed to find appropriate supervisors</li>
-                <li>Increases <b>student success rates</b> through proper guidance</li>
-            </ul>
-            
-            <h3>3. 🤝 Promoting Joint Research</h3>
-            <ul>
-                <li>Enables researchers to <b>find collaborators</b> with complementary expertise</li>
-                <li>Facilitates <b>interdisciplinary research projects</b></li>
-                <li>Increases <b>research output and publications</b></li>
-                <li>Strengthens <b>Ethiopia's research capacity</b></li>
-            </ul>
-            
-            <h3>4. 💼 Consultancy Opportunities</h3>
-            <ul>
-                <li>Connects <b>academic experts</b> with organizations needing consultancy</li>
-                <li>Enables <b>knowledge transfer</b> from academia to industry</li>
-                <li>Creates <b>income-generating opportunities</b> for academics</li>
-                <li>Supports <b>evidence-based decision making</b> in various sectors</li>
-            </ul>
-            
-            <h2>🔬 DISCIPLINES COVERED</h2>
-            <ul>
-                <li><b>🧮 Operations Research & Optimization</b> - Dr. Berhanu Mekonen</li>
-                <li><b>📊 Queuing Theory & Stochastic Processes</b> - Prof. Natesan Thillaigovindan</li>
-                <li><b>🧠 Systems Optimization & AI</b> - Dr. D.Sc. Abebe Geletu</li>
-                <li><b>📊 Metaheuristics & Data Science</b> - Dr. Surafel Luleseged Tilahun</li>
-                <li><b>📐 Numerical Analysis & PDEs</b> - Prof. Gemechis File Duressa</li>
-                <li><b>🔬 Food Microbiology & Biotechnology</b> - Dr. Addisu Fekadu Andeta</li>
-                <li><b>📐🚦 Hyperbolic Traffic Flow & Epidemiology</b> - Prof. Legesse Lemecha Obsu</li>
-                <li><b>🌿📊 Mathematical Bioeconomics</b> - Dr. Simon Derkee Zawka</li>
-            </ul>
-            
-            <h2>📈 SPECIFIC USES</h2>
-            
-            <h3>For <span style=\"color:#1A73E8 !important; font-weight:600 !important;\">Students &amp; Researchers:</span></h3>
-            <ul>
-                <li>✅ Find <b>PhD/MSc supervisors</b></li>
-                <li>✅ Discover <b>research collaborators</b></li>
-                <li>✅ Get <b>expert consultancy</b></li>
-                <li>✅ Submit <b>formal collaboration requests</b></li>
-                <li>✅ Generate <b>professional request letters</b></li>
-            </ul>
-            
-            <h3>For <span style=\"color:#34A853 !important; font-weight:600 !important;\">Academicians &amp; Professors:</span></h3>
-            <ul>
-                <li>✅ Showcase <b>expertise and research interests</b></li>
-                <li>✅ Find <b>supervisees</b></li>
-                <li>✅ Identify <b>joint research partners</b></li>
-                <li>✅ Offer <b>consultancy services</b></li>
-                <li>✅ Expand <b>professional network</b></li>
-            </ul>
-            
-            <h2>💡 ADVANCED FEATURES</h2>
-            
-            <h3>🔍 Smart Search</h3>
-            <ul>
-                <li>Search by <b>name, research area, institution, department, specialization, collaboration type, or keywords</b></li>
-                <li>Filter <b>available professionals only</b></li>
-            </ul>
-            
-            <h3>📝 Request Management</h3>
-            <ul>
-                <li>Submit <b>supervision, joint research, or consultancy requests</b></li>
-                <li>Track <b>request status</b> (Pending/Approved/Rejected)</li>
-                <li>Generate <b>formal request letters</b> automatically</li>
-                <li>Follow up with <b>email integration</b></li>
-            </ul>
-            
-            <h3>📊 Real-Time Dashboard</h3>
-            <ul>
-                <li>Live <b>status indicators</b></li>
-                <li>View <b>available slots</b> for each professional</li>
-                <li>See <b>completed PhDs</b> and <b>publications</b></li>
-            </ul>
-            
-            <h2>🎯 WHO BENEFITS?</h2>
-            <ul>
-                <li><b>PhD Students:</b> Find supervisors, get guidance</li>
-                <li><b>MSc Students:</b> Research collaboration, mentorship</li>
-                <li><b>Professors:</b> Supervise students, joint research</li>
-                <li><b>Researchers:</b> Collaborators, publications</li>
-                <li><b>Universities:</b> Research output, reputation</li>
-                <li><b>Ethiopia:</b> Knowledge economy, development</li>
-            </ul>
-            
-            <h2>📌 SUMMARY</h2>
-            <div class=\"highlight-box\">
-                <p style=\"color:#202124 !important; font-size:1.2rem !important; font-weight:400 !important;\">The <b style=\"color:#1A73E8 !important; font-weight:700 !important;\">Ethiopian Research Collaboration Portal</b> is a <b style=\"color:#34A853 !important; font-weight:600 !important;\">game-changer</b> for Ethiopian academia because it:</p>
-                <ul>
-                    <li>✅ <b>Connects</b> Ethiopian researchers across institutions</li>
-                    <li>✅ <b>Facilitates</b> research supervision and mentorship</li>
-                    <li>✅ <b>Promotes</b> joint research and publications</li>
-                    <li>✅ <b>Creates</b> consultancy opportunities</li>
-                    <li>✅ <b>Builds</b> research capacity in Ethiopia</li>
-                    <li>✅ <b>Strengthens</b> academic networks</li>
-                    <li>✅ <b>Drives</b> national development through research</li>
-                    <li>✅ <b>Showcases</b> Ethiopian academic excellence</li>
-                </ul>
-            </div>
-            
-            <div class=\"quote\">
-                \"The Research Collaboration Portal is not just a tool—it's a movement to transform 
-                Ethiopian research from isolated silos into a connected, collaborative, and globally 
-                competitive academic ecosystem.\"
-            </div>
-            
-            <div class=\"footer-credit\">
-                🌿🇪🇹🎉 <span class=\"highlight-name\">Dr. Berhanu Mekonen (PhD)</span> · 
-                <span class=\"highlight-institution\">Arba Minch University</span> · 
-                August 4, 2026
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    st.components.v1.html(html_content, height=700, scrolling=True)
-    
-    if st.button("🔙 Back to Main Portal", use_container_width=True):
-        st.session_state.show_about = False
-        st.rerun()
-
-# ===================================================================
-# RESEARCHER PROFILES - ALL 8 RESEARCHERS
+# RESEARCHER PROFILES - ALL 8 RESEARCHERS (SAME AS ORIGINAL)
 # ===================================================================
 
 RESEARCHER_PROFILES = {
-    # ===== RESEARCHER 1: Dr. Berhanu Mekonen Alemu =====
     "researcher_1": {
         "id": "A001",
         "name": "Dr. Berhanu Mekonen Alemu",
@@ -1719,8 +1188,6 @@ RESEARCHER_PROFILES = {
             {"degree": "B.Sc. in Applied Mathematics", "institution": "Addis Ababa University", "year": "2016"}
         ]
     },
-    
-    # ===== RESEARCHER 2: Prof. Natesan Thillaigovindan =====
     "researcher_2": {
         "id": "A002",
         "name": "Prof. Natesan Thillaigovindan",
@@ -1783,8 +1250,6 @@ RESEARCHER_PROFILES = {
             {"degree": "M.Sc. in Applied Mathematics", "institution": "NIT Tiruchirappalli", "year": "1977"}
         ]
     },
-    
-    # ===== RESEARCHER 3: Dr. D.Sc. Abebe Geletu =====
     "researcher_3": {
         "id": "A003",
         "name": "Dr. D.Sc. Abebe Geletu",
@@ -1852,8 +1317,6 @@ RESEARCHER_PROFILES = {
             {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "1994"}
         ]
     },
-    
-    # ===== RESEARCHER 4: Dr. Surafel Luleseged Tilahun =====
     "researcher_4": {
         "id": "A004",
         "name": "Dr. Surafel Luleseged Tilahun",
@@ -1914,8 +1377,6 @@ RESEARCHER_PROFILES = {
             {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2006"}
         ]
     },
-    
-    # ===== RESEARCHER 5: Prof. Gemechis File Duressa =====
     "researcher_5": {
         "id": "A005",
         "name": "Prof. Gemechis File Duressa",
@@ -1982,8 +1443,6 @@ RESEARCHER_PROFILES = {
             {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2005"}
         ]
     },
-    
-    # ===== RESEARCHER 6: Dr. Addisu Fekadu Andeta =====
     "researcher_6": {
         "id": "A006",
         "name": "Dr. Addisu Fekadu Andeta",
@@ -2053,8 +1512,6 @@ RESEARCHER_PROFILES = {
             {"degree": "B.Sc. in Biology", "institution": "Arba Minch University", "year": "2006"}
         ]
     },
-    
-    # ===== RESEARCHER 7: Prof. Legesse Lemecha Obsu =====
     "researcher_7": {
         "id": "A007",
         "name": "Prof. Legesse Lemecha Obsu",
@@ -2127,8 +1584,6 @@ RESEARCHER_PROFILES = {
             {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2005"}
         ]
     },
-    
-    # ===== RESEARCHER 8: Dr. Simon Derkee Zawka =====
     "researcher_8": {
         "id": "A008",
         "name": "Dr. Simon Derkee Zawka",
@@ -2206,10 +1661,702 @@ RESEARCHER_PROFILES = {
 }
 
 # ===================================================================
-# FORUM FUNCTIONS - NEW
+# HELPER FUNCTIONS FOR NEW FEATURES
 # ===================================================================
 
-def create_forum_post(title, content, author, tags=[]):
+def show_notification_center():
+    unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("### 🔔 Notifications")
+        if unread > 0:
+            st.warning(f"📌 {unread} new notification(s)")
+    with col2:
+        if st.button("Mark All Read"):
+            for n in st.session_state.notifications:
+                n['read'] = True
+            st.rerun()
+    if st.session_state.notifications:
+        for note in reversed(st.session_state.notifications[-10:]):
+            unread_class = "unread" if not note.get('read', False) else ""
+            st.markdown(f"""
+            <div class="notification-item {unread_class}">
+                <strong>{note['message']}</strong>
+                <div class="notification-time">⏱ {note['time']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No notifications")
+
+def show_onboarding():
+    if st.session_state.onboarding_complete:
+        return
+    st.markdown("### 🚀 Welcome! Let's set up your profile")
+    step = st.session_state.onboarding_step
+    if step == 1:
+        st.markdown("#### Step 1: Tell us about yourself")
+        name = st.text_input("Full Name", value="")
+        institution = st.selectbox("Your Institution", ["Arba Minch University", "Addis Ababa University", "Bahir Dar University", "Jimma University", "Hawassa University", "Other"])
+        department = st.text_input("Department")
+        if st.button("Next →"):
+            st.session_state.user_profiles[st.session_state.current_user] = {
+                "name": name, "institution": institution, "department": department
+            }
+            st.session_state.onboarding_step = 2
+            st.rerun()
+    elif step == 2:
+        st.markdown("#### Step 2: Your research interests")
+        interests = st.multiselect("Select your research interests", ["Agriculture", "Medicine", "Engineering", "Environmental Science", "Physics", "Mathematics", "Computer Science", "Biology", "Chemistry", "Social Sciences"])
+        if st.button("Next →"):
+            st.session_state.user_profiles[st.session_state.current_user]["interests"] = interests
+            st.session_state.onboarding_step = 3
+            st.rerun()
+    elif step == 3:
+        st.markdown("#### Step 3: What are you looking for?" )
+        collab_type = st.radio("I am looking to:", ["Find Collaborators", "Join a Project", "Find a Supervisor", "Offer Mentorship"])
+        if st.button("🚀 Start Exploring!"):
+            st.session_state.user_profiles[st.session_state.current_user]["collab_type"] = collab_type
+            st.session_state.onboarding_complete = True
+            add_points(st.session_state.current_user, 10, "Completed onboarding")
+            add_badge(st.session_state.current_user, "🌟 Explorer")
+            st.success("✅ Profile complete! Welcome to the research community.")
+            st.rerun()
+
+def show_event_calendar():
+    st.markdown("### 📅 Event Calendar")
+    with st.expander("➕ Add New Event", expanded=False):
+        with st.form("add_event"):
+            event_title = st.text_input("Event Title")
+            event_date = st.date_input("Date", datetime.now())
+            event_desc = st.text_area("Description")
+            event_type = st.selectbox("Type", ["Conference", "Workshop", "Seminar", "Webinar", "Defense", "Deadline"])
+            if st.form_submit_button("Add Event"):
+                st.session_state.events.append({
+                    "title": event_title,
+                    "date": event_date.strftime("%Y-%m-%d"),
+                    "description": event_desc,
+                    "type": event_type,
+                    "added_by": st.session_state.current_user
+                })
+                add_notification(f"📅 New event added: {event_title}", "info")
+                st.success("Event added!")
+                st.rerun()
+    if st.session_state.events:
+        for ev in sorted(st.session_state.events, key=lambda x: x['date']):
+            st.markdown(f"""
+            <div style="background:#F8F9FA;padding:1rem;border-radius:12px;margin-bottom:0.5rem;border-left:4px solid #1A73E8;">
+                <strong>{ev['title']}</strong> <span style="color:#5F6368;">({ev['type']})</span><br>
+                📅 {ev['date']} · Added by {ev['added_by']}<br>
+                {ev['description']}
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No events yet. Add one to share with the community!")
+
+def show_grants():
+    st.markdown("### 💰 Grant & Funding Opportunities")
+    if not st.session_state.grants:
+        # Seed with some sample grants
+        st.session_state.grants = [
+            {"title": "National Science Foundation - Research Grants", "deadline": "2026-12-15", "amount": "$50,000 - $200,000", "link": "https://nsf.gov"},
+            {"title": "African Union Research Innovation Fund", "deadline": "2026-11-30", "amount": "€100,000", "link": "https://au.int"},
+            {"title": "Wellcome Trust - Public Health Research", "deadline": "2026-10-01", "amount": "£150,000", "link": "https://wellcome.org"}
+        ]
+    for grant in st.session_state.grants:
+        st.markdown(f"""
+        <div style="background:#E8F0FE;padding:1rem;border-radius:12px;margin-bottom:0.5rem;">
+            <strong>{grant['title']}</strong><br>
+            📅 Deadline: {grant['deadline']} · 💵 {grant['amount']}<br>
+            <a href="{grant['link']}" target="_blank">Apply Now →</a>
+        </div>
+        """, unsafe_allow_html=True)
+
+def show_researcher_of_month():
+    # Rotate through researchers
+    researchers = list(RESEARCHER_PROFILES.keys())
+    month = datetime.now().month
+    idx = month % len(researchers)
+    prof = RESEARCHER_PROFILES[researchers[idx]]
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#E8F0FE,#FFFFFF);border:2px solid #FFD700;border-radius:16px;padding:2rem;margin:1rem 0;">
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <div style="font-size:4rem;">{prof['profile_image']}</div>
+            <div>
+                <h3 style="margin:0;">🏆 Researcher of the Month</h3>
+                <h2 style="margin:0;color:#1A73E8;">{prof['name']}</h2>
+                <p style="margin:0;">{prof['title']} · {prof['institution']}</p>
+                <p>⭐ Trust Score: {prof['trust_score']}% · 📊 h-index: {prof['h_index']} · 📄 {len(prof['publications'])} publications</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def show_chat():
+    st.markdown("### 💬 Live Chat Room")
+    if not st.session_state.chat_messages:
+        st.info("No messages yet. Start the conversation!")
+    for msg in st.session_state.chat_messages[-20:]:
+        cls = "user" if msg['user'] == st.session_state.current_user else "other"
+        st.markdown(f"""
+        <div class="chat-message {cls}">
+            <span class="chat-author">{msg['user']}</span>
+            <span class="chat-time">({msg['time']})</span>
+            <p style="margin:0.2rem 0 0 0;">{msg['content']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with st.form("chat_form"):
+        msg = st.text_input("Type your message...", key="chat_input", placeholder="Share a quick thought...")
+        if st.form_submit_button("Send"):
+            if msg:
+                st.session_state.chat_messages.append({
+                    "user": st.session_state.current_user,
+                    "content": msg,
+                    "time": datetime.now().strftime("%H:%M")
+                })
+                add_points(st.session_state.current_user, 2, "Chat message")
+                st.rerun()
+
+# ===================================================================
+# MAIN APPLICATION - ENHANCED
+# ===================================================================
+
+def main():
+    init_user_db()
+    if not st.session_state.logged_in:
+        # Login/Register page (original)
+        st.markdown("""
+        <div style="text-align:center; padding:1rem 0;">
+            <div style="font-size:4rem; margin-bottom:0.5rem;">🌿🇪🇹🎉</div>
+            <h1 style="font-size:3rem; margin:0;">Research Collaboration Portal</h1>
+            <p style="color:#5F6368; font-size:1.2rem; margin-top:0.5rem;">Sign in to access the Ethiopian Research Network</p>
+        </div>
+        """, unsafe_allow_html=True)
+        tab1, tab2 = st.tabs(["🔐 Login", "📝 Register"])
+        with tab1:
+            with st.form("login_form"):
+                username = st.text_input("📧 Email Address", placeholder="your.name@amu.edu.et")
+                password = st.text_input("🔒 Password", type="password")
+                if st.form_submit_button("Sign In", use_container_width=True):
+                    if username and password:
+                        ok, msg = login_user(username, password)
+                        if ok:
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                    else:
+                        st.error("Please enter both fields.")
+        with tab2:
+            with st.form("register_form"):
+                new_user = st.text_input("📧 Email Address *", placeholder="your.name@amu.edu.et")
+                new_pass = st.text_input("🔒 Create Password *", type="password", placeholder="Min 6 chars")
+                confirm = st.text_input("✅ Confirm Password *", type="password")
+                if st.form_submit_button("Create Account", use_container_width=True):
+                    if new_user and new_pass and confirm:
+                        ok, msg = register_user(new_user, new_pass, confirm)
+                        if ok:
+                            st.success(msg)
+                        else:
+                            st.error(msg)
+                    else:
+                        st.error("Please fill all fields.")
+        return
+
+    # Logged in: show onboarding if not complete
+    if not st.session_state.onboarding_complete and st.session_state.current_user:
+        show_onboarding()
+        return
+
+    academicians_df, students_df = load_data()
+    if 'requests' not in st.session_state:
+        st.session_state.requests = []
+    if 'selected_professor' not in st.session_state:
+        st.session_state.selected_professor = None
+    if 'show_about' not in st.session_state:
+        st.session_state.show_about = False
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "🏠 Home"
+
+    current_user = st.session_state.current_user
+    user_display_name = current_user.split('@')[0].replace('.', ' ').title() if current_user else "User"
+
+    # SIDEBAR
+    with st.sidebar:
+        st.markdown("### Research Portal")
+        st.markdown("---")
+        st.markdown(f"""
+        <div style="background:#E8F0FE;padding:1rem;border-radius:12px;margin-bottom:1rem;">
+            <p style="margin:0;font-weight:600;color:#1A73E8;">👤 {user_display_name}</p>
+            <p style="margin:0;font-size:0.85rem;color:#5F6368;">{current_user}</p>
+            <p style="margin:0;font-size:0.85rem;color:#5F6368;">⭐ Points: {st.session_state.user_points.get(current_user, 0)}</p>
+            <div class="badge-display">
+                {''.join(f'<span class="badge-item">🏅 {b}</span>' for b in st.session_state.user_badges.get(current_user, []))}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
+        nav_options = [
+            "🏠 Home", "🔍 Find Researchers", "💬 Forum", "📊 Analytics",
+            "📋 My Requests", "💬 Chat", "📅 Events", "💰 Grants",
+            "👥 Mentorship", "📄 Papers", "📝 Feedback", "👤 Profile"
+        ]
+        if unread > 0:
+            nav_options.append(f"📨 Notifications <span class='notification-badge'>{unread}</span>")
+        else:
+            nav_options.append("📨 Notifications")
+        selected_page = st.radio("Navigation", nav_options, index=0)
+        st.session_state.current_page = selected_page
+        if st.button("🚪 Logout", use_container_width=True):
+            logout_user()
+            st.rerun()
+        st.markdown("---")
+        if st.button("About This Portal", use_container_width=True):
+            st.session_state.show_about = True
+            st.rerun()
+        st.markdown("---")
+        st.markdown("Connecting Ethiopian Researchers")
+        st.markdown("*Dr. Berhanu Mekonen (PhD), Arba Minch University, August 14, 2026*")
+
+    if st.session_state.show_about:
+        show_about_page()
+        return
+
+    current_page = getattr(st.session_state, 'current_page', "🏠 Home")
+
+    # HEADER WITH STATS
+    available_profs = len(academicians_df[academicians_df['available_for_collaboration'] == True])
+    total_publications = sum([len(p.get('publications', [])) for _, p in academicians_df.iterrows()])
+    total_completed_phds = sum([p.get('completed_phds', 0) for _, p in academicians_df.iterrows()])
+
+    st.markdown(f"""
+    <div class="main-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo-icon">🌿🇪🇹🎉</div>
+                <div class="logo-text">
+                    <h1>Ethiopian Research Collaboration Portal</h1>
+                    <div class="subtitle">Connecting <span class="highlight">Ethiopian</span> Researchers & Academic Professionals</div>
+                    <div class="developer-credit">
+                        🌿🇪🇹🎉 <span class="highlight-name">Dr. Berhanu Mekonen (PhD)</span> · 
+                        <span class="highlight-institution">Arba Minch University</span> · 
+                        August 14, 2026
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <div class="user-avatar">{user_display_name[0]}</div>
+                    <span class="user-name">{user_display_name}</span>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-item"><span class="number">{len(academicians_df)}</span><span class="label">Verified</span></div>
+                    <div class="stat-item"><span class="number">{available_profs}</span><span class="label">Available</span></div>
+                    <div class="stat-item"><span class="number">{len(students_df)}</span><span class="label">Students</span></div>
+                    <div class="stat-item"><span class="number">{total_publications}</span><span class="label">Publications</span></div>
+                    <div class="stat-item"><span class="number">{total_completed_phds}</span><span class="label">PhDs</span></div>
+                </div>
+                <div class="research-dropdown">
+                    <button class="research-btn">🌍 Researches <span class="arrow-down">▼</span></button>
+                    <div class="research-dropdown-content">
+                        <div class="dropdown-title">📚 Research Resources</div>
+                        <a href="https://scholar.google.com/" target="_blank" class="link-item"><span class="link-icon">🔬</span><span class="link-text">Google Scholar</span><span class="link-url">scholar.google.com</span><span class="link-arrow">→</span></a>
+                        <hr class="divider">
+                        <a href="https://www.scimagojr.com/" target="_blank" class="link-item"><span class="link-icon">📊</span><span class="link-text">Scopus Indexed?</span><span class="link-url">scimagojr.com</span><span class="link-arrow">→</span></a>
+                        <hr class="divider">
+                        <a href="https://mjl.clarivate.com/home" target="_blank" class="link-item"><span class="link-icon">📋</span><span class="link-text">Web of Science</span><span class="link-url">mjl.clarivate.com</span><span class="link-arrow">→</span></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ethiopian-stripe"></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="status-bar">
+        <div><span class="status-dot online"></span><span class="status-text">System Online · <span class="highlight-green">{len(academicians_df)}</span> verified professionals ready</span></div>
+        <div><span class="live-badge">LIVE · {datetime.now().strftime('%H:%M:%S')}</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # PAGE ROUTING
+    if current_page == "🏠 Home" or current_page == "🔍 Find Researchers":
+        if current_page == "🏠 Home":
+            show_researcher_of_month()
+            st.markdown("---")
+        st.markdown("### Find Academic Professionals")
+        with st.container():
+            st.markdown('<div class="search-section">', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns([1, 1.5, 0.8])
+            with col1:
+                prof_search_type = st.selectbox("Search by:", ["All Fields", "Name", "Research Area", "Institution", "Keyword"])
+            with col2:
+                prof_search_query = st.text_input("Enter search term:", placeholder="e.g., mathematics, queuing...")
+            with col3:
+                show_available_only = st.checkbox("Available Only", value=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        filtered_profs = search_academicians(academicians_df, prof_search_query, prof_search_type)
+        if show_available_only:
+            filtered_profs = filtered_profs[filtered_profs['available_for_collaboration'] == True]
+        st.caption(f"Found {len(filtered_profs)} verified professional(s)")
+
+        for _, prof in filtered_profs.iterrows():
+            slots = prof['supervisory_capacity'] - prof['current_students']
+            status_class = "badge-available" if slots > 0 else "badge-full"
+            status_text = f"{slots} slots available" if slots > 0 else "Fully booked"
+            with st.expander(f"{prof['profile_image']} {prof['name']} - {prof['title']}", expanded=False):
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    verification_html = ''.join(f'<span class="badge-verified">{b}</span>' for b in prof.get('verification_badges', []))
+                    social_links_html = ""
+                    if prof.get('orcid_url'):
+                        social_links_html += f'<a href="{prof["orcid_url"]}" target="_blank" class="social-link social-link-orcid">ORCID</a>'
+                    if prof.get('researchgate_url'):
+                        social_links_html += f'<a href="{prof["researchgate_url"]}" target="_blank" class="social-link social-link-researchgate">ResearchGate</a>'
+                    if prof.get('google_scholar_url'):
+                        social_links_html += f'<a href="{prof["google_scholar_url"]}" target="_blank" class="social-link social-link-scholar">Google Scholar</a>'
+                    if social_links_html:
+                        social_links_html = f'<div class="social-links">{social_links_html}</div>'
+                    st.markdown(f"""
+                    <div class="professor-card">
+                        <div class="card-header"><div><h3>{prof['profile_image']} {prof['name']}</h3><span class="title-badge">{prof['title']}</span><div>{verification_html}</div>{social_links_html}</div>
+                        <div><span class="{status_class}">{status_text}</span><br><span style="color:#FBBC04;">⭐ Trust Score: {prof['trust_score']}%</span></div></div>
+                        <div><p><b>🏛️ Institution:</b> {prof['institution']}</p><p><b>📚 Department:</b> {prof['department']}</p><p><b>🎓 Education:</b> {prof['education']}</p><p><b>🔬 Research Interests:</b> {prof['research_interests']}</p>
+                        <div>{''.join(f'<span class="badge-collab">{t}</span>' for t in prof.get('collaboration_types', []))}</div></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if prof.get('publications'):
+                        with st.expander("📄 Publications"):
+                            for pub in prof['publications']:
+                                st.write(f"• {pub}")
+                with col2:
+                    st.markdown(f"""
+                    <div style="background:#F8F9FA;border:1px solid #E8EAED;border-radius:12px;padding:1.5rem;">
+                        <h4>📬 Contact</h4><p>✉️ {prof['email']}</p><p>📞 {prof['phone']}</p>
+                        <p>📊 Completed PhDs: <span style="color:#1A73E8;font-weight:700;">{prof['completed_phds']}</span></p>
+                        <p>📋 Available Slots: <span style="color:#1A73E8;font-weight:700;">{slots}</span></p>
+                        <p>📈 h-index: <span style="color:#1A73E8;font-weight:700;">{prof['h_index']}</span> | 📑 Citations: <span style="color:#1A73E8;font-weight:700;">{prof['total_citations']}</span></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if slots > 0:
+                        if st.button(f"Request Collaboration with {prof['name'].split()[0]}", key=f"req_{prof['id']}"):
+                            st.session_state.selected_professor = prof.to_dict()
+                            st.success(f"Ready to request collaboration with {prof['name']}")
+                            st.rerun()
+                    else:
+                        st.warning("No available slots")
+
+    elif current_page == "💬 Forum":
+        st.markdown("### 💬 Research Discussion Forum")
+        with st.expander("➕ Create New Post", expanded=False):
+            with st.form("new_post"):
+                title = st.text_input("Title", placeholder="Enter your post title...")
+                content = st.text_area("Content", height=150, placeholder="Share your research ideas...")
+                tags = st.text_input("Tags (comma separated)", placeholder="e.g., optimization, machine learning")
+                if st.form_submit_button("📝 Publish Post", use_container_width=True):
+                    if title and content:
+                        create_forum_post(title, content, user_display_name, tags)
+                        add_points(st.session_state.current_user, 10, "Forum post")
+                        if len(st.session_state.forum_posts) == 1:
+                            add_badge(st.session_state.current_user, "💬 First Post")
+                        st.success("✅ Post published!")
+                        st.rerun()
+                    else:
+                        st.error("Please enter both title and content.")
+        if st.session_state.forum_posts:
+            for post in reversed(st.session_state.forum_posts):
+                with st.expander(f"📌 {post['title']} - by {post['author']}", expanded=False):
+                    st.markdown(f"""
+                    <div class="forum-post">
+                        <div class="post-header"><span class="post-title">{post['title']}</span><span class="post-meta">🕐 {post['date']} · ❤️ {post['likes']} likes</span></div>
+                        <div>{post['content']}</div>
+                        <div class="post-tags">{''.join(f'<span class="tag">#{tag}</span>' for tag in post['tags'])}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    col1, col2 = st.columns([1, 5])
+                    with col1:
+                        if st.button(f"❤️ {post['likes']}", key=f"like_{post['id']}"):
+                            like_post(post['id'])
+                            st.rerun()
+                    st.markdown("#### 💬 Comments")
+                    if post['comments']:
+                        for comment in post['comments']:
+                            st.markdown(f"<div style='background:#F8F9FA;padding:0.75rem;border-radius:8px;margin-bottom:0.5rem;border-left:3px solid #1A73E8;'><strong>{comment['author']}</strong> <span style='color:#5F6368;font-size:0.8rem;'>({comment['date']})</span><p style='margin:0.2rem 0 0 0;'>{comment['content']}</p></div>", unsafe_allow_html=True)
+                    with st.form(f"comment_form_{post['id']}"):
+                        comment_content = st.text_area("Add a comment", key=f"comment_{post['id']}", placeholder="Share your thoughts...")
+                        if st.form_submit_button("💬 Submit Comment", use_container_width=True):
+                            if comment_content:
+                                add_comment_to_post(post['id'], user_display_name, comment_content)
+                                add_points(st.session_state.current_user, 5, "Comment")
+                                st.success("Comment added!")
+                                st.rerun()
+                            else:
+                                st.error("Please enter a comment.")
+        else:
+            st.info("No posts yet. Start a discussion! 🚀")
+
+    elif current_page == "📊 Analytics":
+        st.markdown("### 📊 Research Impact Dashboard")
+        pub_data = []
+        for _, prof in academicians_df.iterrows():
+            pub_data.append({
+                'name': prof['name'].split()[1] if len(prof['name'].split()) > 1 else prof['name'],
+                'publications': len(prof.get('publications', [])),
+                'citations': prof.get('total_citations', 0),
+                'h_index': prof.get('h_index', 0),
+                'trust_score': prof.get('trust_score', 0)
+            })
+        df_pub = pd.DataFrame(pub_data)
+        if not df_pub.empty:
+            col1, col2 = st.columns(2)
+            with col1:
+                fig = px.bar(df_pub, x='name', y='publications', title='Publications by Researcher', color='publications', color_continuous_scale='Greens', text='publications')
+                fig.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                fig2 = px.scatter(df_pub, x='publications', y='citations', size='h_index', text='name', title='Publications vs Citations', color='trust_score', color_continuous_scale='Viridis')
+                fig2.update_layout(height=400)
+                st.plotly_chart(fig2, use_container_width=True)
+            col3, col4 = st.columns(2)
+            with col3:
+                fig3 = px.bar(df_pub, x='name', y='h_index', title='h-index by Researcher', color='h_index', color_continuous_scale='Blues', text='h_index')
+                fig3.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig3, use_container_width=True)
+            with col4:
+                fig4 = px.bar(df_pub, x='name', y='trust_score', title='Trust Score by Researcher', color='trust_score', color_continuous_scale='Oranges', text='trust_score')
+                fig4.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig4, use_container_width=True)
+            st.markdown("#### Summary Statistics")
+            c1,c2,c3,c4 = st.columns(4)
+            c1.metric("Total Publications", df_pub['publications'].sum())
+            c2.metric("Total Citations", df_pub['citations'].sum())
+            c3.metric("Avg h-index", f"{df_pub['h_index'].mean():.1f}")
+            c4.metric("Avg Trust Score", f"{df_pub['trust_score'].mean():.1f}%")
+
+    elif current_page == "📋 My Requests" or st.session_state.selected_professor:
+        st.markdown("### Request Collaboration")
+        if st.session_state.selected_professor:
+            prof = st.session_state.selected_professor
+            st.markdown(f"<div style='background:#E8F0FE;border:1px solid #1A73E8;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border-left:5px solid #1A73E8;'><h4>Requesting: {prof['name']} - {prof['title']}</h4><p style='color:#5F6368;'>🏛️ {prof['institution']} • 📚 {prof['department']}</p></div>", unsafe_allow_html=True)
+            with st.form("collaboration_request"):
+                request_type = st.selectbox("Type of Collaboration", prof.get('collaboration_types', ['Research Supervision', 'Joint Research', 'Consultancy']))
+                col1, col2 = st.columns(2)
+                with col1:
+                    requester_name = st.text_input("Full Name *", value=user_display_name)
+                    requester_email = st.text_input("Email Address *", value=current_user)
+                with col2:
+                    requester_institution = st.text_input("Institution *", value="Arba Minch University")
+                    requester_phone = st.text_input("Phone Number", value="")
+                research_topic = st.text_area("Research Topic/Proposal *", height=150)
+                if st.form_submit_button("Submit Request", use_container_width=True):
+                    if requester_name and requester_email and requester_institution and research_topic:
+                        letter_data = generate_request_letter(requester_name, requester_institution, prof['name'], prof['title'], prof['institution'], research_topic, request_type, requester_email, requester_phone)
+                        st.session_state.requests.append({
+                            'id': f"REQ{len(st.session_state.requests)+1:04d}",
+                            'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
+                            'requester': requester_name,
+                            'professor': prof['name'],
+                            'request_type': request_type,
+                            'research_topic': research_topic,
+                            'status': 'Pending',
+                            'letter': letter_data
+                        })
+                        add_notification(f"📩 Collaboration request submitted to {prof['name']}", "success")
+                        add_points(st.session_state.current_user, 15, "Collaboration request")
+                        st.success(f"✅ Request submitted to {prof['name']}!")
+                        st.balloons()
+                        st.markdown(f"<div class='letter-box'><h2>REQUEST FOR {request_type.upper()}</h2><p class='date'><b>Date:</b> {letter_data['date']}</p><p><b>From:</b><br>{letter_data['from_address']}</p><p><b>To:</b><br>{letter_data['to_address']}</p><p><b>Subject:</b> {letter_data['subject']}</p><p>Dear {prof['name'].split()[0]},</p><p>{letter_data['body']}</p><div class='signature'><p>Yours sincerely,</p><p><b>{requester_name}</b><br>{requester_institution}</p></div></div>", unsafe_allow_html=True)
+                    else:
+                        st.error("Please fill in all required fields.")
+        else:
+            st.info("👈 Go to 'Find Professionals' and click 'Request Collaboration'")
+        st.markdown("### My Collaboration Requests")
+        if not st.session_state.requests:
+            st.info("You haven't submitted any collaboration requests yet.")
+        else:
+            for req in reversed(st.session_state.requests):
+                with st.expander(f"📩 {req['request_type']} - {req['professor']} ({req['status']})"):
+                    st.markdown(f"<div style='background:#F8F9FA;padding:1.5rem;border-radius:12px;border:1px solid #E8EAED;'><p><b>Topic:</b> {req['research_topic'][:150]}...</p><p><b>Submitted:</b> {req['date']}</p><p><b>Status:</b> <span style='color:#1A73E8;font-weight:600;'>{req['status']}</span></p></div>", unsafe_allow_html=True)
+
+    elif current_page == "💬 Chat":
+        show_chat()
+
+    elif current_page == "📅 Events":
+        show_event_calendar()
+
+    elif current_page == "💰 Grants":
+        show_grants()
+
+    elif current_page == "👥 Mentorship":
+        st.markdown("### 👥 Mentorship Program")
+        with st.expander("➕ Become a Mentor", expanded=False):
+            with st.form("mentor_form"):
+                expertise = st.text_input("Your Expertise / Research Areas")
+                availability = st.selectbox("Availability", ["Available", "Limited", "Not Available"])
+                if st.form_submit_button("Register as Mentor"):
+                    st.session_state.mentorships.append({
+                        "mentor": st.session_state.current_user,
+                        "expertise": expertise,
+                        "availability": availability,
+                        "mentees": []
+                    })
+                    add_notification(f"👨‍🏫 {user_display_name} registered as a mentor!", "success")
+                    add_points(st.session_state.current_user, 10, "Mentor registration")
+                    st.success("You are now a mentor!")
+                    st.rerun()
+        if st.session_state.mentorships:
+            for m in st.session_state.mentorships:
+                st.markdown(f"<div style='background:#F8F9FA;padding:1rem;border-radius:12px;margin-bottom:0.5rem;'><strong>{m['mentor']}</strong> · Expertise: {m['expertise']} · {m['availability']}</div>", unsafe_allow_html=True)
+
+    elif current_page == "📄 Papers":
+        st.markdown("### 📄 Research Paper Sharing")
+        with st.expander("📤 Upload a Paper", expanded=False):
+            with st.form("paper_form"):
+                title = st.text_input("Paper Title")
+                authors = st.text_input("Authors (comma separated)")
+                abstract = st.text_area("Abstract / Description")
+                if st.form_submit_button("Upload Paper"):
+                    st.session_state.papers.append({
+                        "title": title,
+                        "authors": authors,
+                        "abstract": abstract,
+                        "uploaded_by": st.session_state.current_user,
+                        "date": datetime.now().strftime("%Y-%m-%d")
+                    })
+                    add_points(st.session_state.current_user, 10, "Paper upload")
+                    st.success("Paper uploaded!")
+                    st.rerun()
+        for p in reversed(st.session_state.papers):
+            st.markdown(f"<div style='background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;padding:1rem;margin-bottom:0.5rem;'><strong>{p['title']}</strong><br>Authors: {p['authors']}<br>{p['abstract'][:200]}...<br><span style='color:#5F6368;'>Uploaded by {p['uploaded_by']} on {p['date']}</span></div>", unsafe_allow_html=True)
+
+    elif current_page == "📝 Feedback" or "📨 Notifications" in current_page:
+        if "📨 Notifications" in current_page:
+            show_notification_center()
+        else:
+            st.markdown("### 📝 Feedback & Suggestions")
+            with st.form("feedback_form"):
+                rating = st.slider("How would you rate the platform?", 1, 5, 5)
+                comment = st.text_area("Your feedback (optional)", placeholder="Tell us what you think...")
+                if st.form_submit_button("Submit Feedback"):
+                    st.session_state.feedback.append({
+                        "user": st.session_state.current_user,
+                        "rating": rating,
+                        "comment": comment,
+                        "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+                    })
+                    add_points(st.session_state.current_user, 5, "Feedback submitted")
+                    st.success("Thank you for your feedback!")
+                    st.rerun()
+            st.markdown("### Recent Feedback")
+            for fb in reversed(st.session_state.feedback[-5:]):
+                stars = "⭐" * fb['rating']
+                st.markdown(f"<div class='feedback-item'><div class='feedback-header'><strong>{fb['user']}</strong><span class='feedback-rating'>{stars}</span></div><p>{fb['comment']}</p><span style='color:#5F6368;font-size:0.8rem;'>{fb['date']}</span></div>", unsafe_allow_html=True)
+
+    elif current_page == "👤 Profile":
+        st.markdown("### 👤 My Profile")
+        profile = st.session_state.user_profiles.get(st.session_state.current_user, {})
+        st.markdown(f"""
+        <div style="background:#F8F9FA;padding:2rem;border-radius:16px;border:1px solid #E8EAED;">
+            <div style="font-size:4rem;text-align:center;">👤</div>
+            <h3 style="text-align:center;">{profile.get('name', user_display_name)}</h3>
+            <p style="text-align:center;color:#5F6368;">{st.session_state.current_user}</p>
+            <p><strong>Institution:</strong> {profile.get('institution', 'Not set')}</p>
+            <p><strong>Department:</strong> {profile.get('department', 'Not set')}</p>
+            <p><strong>Research Interests:</strong> {', '.join(profile.get('interests', [])) or 'Not set'}</p>
+            <p><strong>Looking for:</strong> {profile.get('collab_type', 'Not set')}</p>
+            <p><strong>Points:</strong> ⭐ {st.session_state.user_points.get(st.session_state.current_user, 0)}</p>
+            <div><strong>Badges:</strong> {', '.join(st.session_state.user_badges.get(st.session_state.current_user, [])) or 'None yet'}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ===================================================================
+# HELPER FUNCTIONS (LOAD, SEARCH, LETTER, FORUM)
+# ===================================================================
+@st.cache_data
+def load_data():
+    academicians_data = []
+    for key, prof in RESEARCHER_PROFILES.items():
+        academicians_data.append({
+            "id": prof["id"],
+            "name": prof["name"],
+            "title": prof["title"],
+            "institution": prof["institution"],
+            "department": prof["department"],
+            "education": prof["education"],
+            "specializations": prof["specializations"],
+            "publications": prof["publications"],
+            "supervisory_capacity": prof["supervisory_capacity"],
+            "current_students": prof["current_students"],
+            "completed_phds": prof.get("completed_phds", 0),
+            "email": prof["email"],
+            "phone": prof.get("phone", "Not publicly available"),
+            "research_interests": prof["research_interests"],
+            "available_for_collaboration": prof.get("available_for_collaboration", True),
+            "collaboration_types": prof.get("collaboration_types", []),
+            "profile_image": prof["profile_image"],
+            "research_keywords": prof["research_keywords"],
+            "orcid_url": prof.get("orcid_url", ""),
+            "researchgate_url": prof.get("researchgate_url", ""),
+            "google_scholar_url": prof.get("google_scholar_url", ""),
+            "scopus_url": prof.get("scopus_url", ""),
+            "h_index": prof.get("h_index", 0),
+            "total_citations": prof.get("total_citations", 0),
+            "trust_score": prof.get("trust_score", 0),
+            "verification_badges": prof.get("verification_badges", []),
+            "biography": prof.get("biography", "")
+        })
+    students_data = [
+        {"id": "S001", "name": "Abebe Kebede", "research_proposal": "Mathematical modeling of infectious disease spread", "field_of_interest": "Applied Mathematics", "degree_background": "MSc in Mathematics", "email": "abebe.kebede@amu.edu.et", "institution": "Arba Minch University"},
+        {"id": "S002", "name": "Tigist Worku", "research_proposal": "Solar energy optimization for rural electrification", "field_of_interest": "Electrical Engineering", "degree_background": "MSc in Electrical Engineering", "email": "tigist.worku@aau.edu.et", "institution": "Addis Ababa University"},
+        {"id": "S003", "name": "Fasil Hailu", "research_proposal": "Water resource management for drought-prone regions", "field_of_interest": "Civil Engineering", "degree_background": "MSc in Hydraulic Engineering", "email": "fasil.hailu@bdu.edu.et", "institution": "Bahir Dar University"},
+        {"id": "S004", "name": "Meron Tekle", "research_proposal": "Machine learning for crop yield prediction", "field_of_interest": "Computer Science", "degree_background": "MSc in Computer Science", "email": "meron.tekle@ju.edu.et", "institution": "Jimma University"},
+        {"id": "S005", "name": "Yonas Desta", "research_proposal": "Climate-smart agricultural practices", "field_of_interest": "Agricultural Science", "degree_background": "MSc in Agriculture", "email": "yonas.desta@hu.edu.et", "institution": "Hawassa University"},
+        {"id": "S006", "name": "Hiwot Getachew", "research_proposal": "Epidemiological modeling of non-communicable diseases", "field_of_interest": "Public Health", "degree_background": "MPH in Epidemiology", "email": "hiwot.getachew@aau.edu.et", "institution": "Addis Ababa University"},
+        {"id": "S007", "name": "Dawit Eshetu", "research_proposal": "Control system design for automated irrigation", "field_of_interest": "Electrical Engineering", "degree_background": "MSc in Control Engineering", "email": "dawit.eshetu@bdu.edu.et", "institution": "Bahir Dar University"},
+        {"id": "S008", "name": "Sara Mohammed", "research_proposal": "Natural language processing for Amharic language", "field_of_interest": "Computer Science", "degree_background": "MSc in Computer Science", "email": "sara.mohammed@ju.edu.et", "institution": "Jimma University"},
+        {"id": "S009", "name": "Henok Amanuel", "research_proposal": "Industrial engineering optimization of manufacturing processes", "field_of_interest": "Mechanical Engineering", "degree_background": "MSc in Industrial Engineering", "email": "henok.amanuel@aau.edu.et", "institution": "Addis Ababa University"},
+        {"id": "S010", "name": "Beza Tadesse", "research_proposal": "Computational modeling of renewable energy materials", "field_of_interest": "Physics", "degree_background": "MSc in Physics", "email": "beza.tadesse@bdu.edu.et", "institution": "Bahir Dar University"}
+    ]
+    return pd.DataFrame(academicians_data), pd.DataFrame(students_data)
+
+def search_academicians(academicians_df, search_query, search_type):
+    if not search_query:
+        return academicians_df
+    search_query = search_query.lower()
+    if search_type == "Name":
+        return academicians_df[academicians_df['name'].str.lower().str.contains(search_query, na=False)]
+    elif search_type == "Research Area":
+        return academicians_df[academicians_df['research_interests'].str.lower().str.contains(search_query, na=False)]
+    elif search_type == "Institution":
+        return academicians_df[academicians_df['institution'].str.lower().str.contains(search_query, na=False)]
+    elif search_type == "Keyword":
+        mask = academicians_df['research_keywords'].apply(lambda x: any(search_query in kw.lower() for kw in x) if isinstance(x, list) else False)
+        return academicians_df[mask]
+    else:
+        mask = (academicians_df['name'].str.lower().str.contains(search_query, na=False) |
+                academicians_df['institution'].str.lower().str.contains(search_query, na=False) |
+                academicians_df['research_interests'].str.lower().str.contains(search_query, na=False))
+        return academicians_df[mask]
+
+def generate_request_letter(student_name, student_institution, professor_name, professor_title, professor_institution, research_topic, request_type, student_email, student_phone):
+    date = datetime.now().strftime("%B %d, %Y")
+    if request_type == "Research Supervision":
+        subject = f"Request for PhD Supervision - {student_name}"
+        body = f"I am writing to formally request your consideration to serve as my PhD supervisor. I am currently pursuing my doctoral studies at {student_institution}. My research focuses on: {research_topic}"
+    else:
+        subject = f"Request for Collaboration - {student_name}"
+        body = f"I am writing to propose a collaboration between {student_institution} and {professor_institution}. My research involves: {research_topic}"
+    return {
+        'date': date,
+        'from_address': f"{student_name}\n{student_institution}\n{student_email}",
+        'to_address': f"{professor_name}\n{professor_title}\n{professor_institution}",
+        'subject': subject,
+        'body': body
+    }
+
+def create_forum_post(title, content, author, tags=""):
     post = {
         "id": len(st.session_state.forum_posts) + 1,
         "title": title,
@@ -2228,11 +2375,7 @@ def create_forum_post(title, content, author, tags=[]):
 def add_comment_to_post(post_id, author, content):
     for post in st.session_state.forum_posts:
         if post["id"] == post_id:
-            comment = {
-                "author": author,
-                "content": content,
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M")
-            }
+            comment = {"author": author, "content": content, "date": datetime.now().strftime("%Y-%m-%d %H:%M")}
             post["comments"].append(comment)
             add_notification(f"💬 New comment on '{post['title']}' by {author}", "info")
             break
@@ -2243,765 +2386,27 @@ def like_post(post_id):
             post["likes"] += 1
             break
 
-# ===================================================================
-# NOTIFICATION FUNCTIONS - NEW
-# ===================================================================
-
-def show_notification_center():
-    unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("### 🔔 Notifications")
-        if unread > 0:
-            st.warning(f"📌 {unread} new notification(s)")
-    with col2:
-        if st.button("Mark All Read"):
-            for n in st.session_state.notifications:
-                n['read'] = True
-            st.rerun()
-    
-    if st.session_state.notifications:
-        for note in reversed(st.session_state.notifications[-10:]):
-            unread_class = "unread" if not note.get('read', False) else ""
-            st.markdown(f"""
-            <div class="notification-item {unread_class}">
-                <strong>{note['message']}</strong>
-                <div class="notification-time">⏱ {note['time']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("No notifications")
-
-# ===================================================================
-# FUNCTIONS - ORIGINAL
-# ===================================================================
-
-@st.cache_data
-def load_data():
-    academicians_data = []
-    for key, prof in RESEARCHER_PROFILES.items():
-        academician = {
-            "id": prof["id"],
-            "name": prof["name"],
-            "title": prof["title"],
-            "institution": prof["institution"],
-            "department": prof["department"],
-            "education": prof["education"],
-            "specializations": prof["specializations"],
-            "publications": prof["publications"],
-            "supervisory_capacity": prof["supervisory_capacity"],
-            "current_students": prof["current_students"],
-            "completed_phds": prof.get("completed_phds", 0),
-            "email": prof["email"],
-            "phone": prof.get("phone", "Not publicly available"),
-            "research_interests": prof["research_interests"],
-            "available_for_collaboration": prof.get("available_for_collaboration", True),
-            "collaboration_types": prof.get("collaboration_types", ["Research Supervision", "Joint Research"]),
-            "profile_image": prof["profile_image"],
-            "research_keywords": prof["research_keywords"],
-            "orcid_id": prof.get("orcid_id", ""),
-            "orcid_url": prof.get("orcid_url", ""),
-            "researchgate_url": prof.get("researchgate_url", ""),
-            "google_scholar_url": prof.get("google_scholar_url", ""),
-            "scopus_url": prof.get("scopus_url", ""),
-            "h_index": prof.get("h_index", 0),
-            "total_citations": prof.get("total_citations", 0),
-            "trust_score": prof.get("trust_score", 0),
-            "last_verified": prof.get("last_verified", "2026-08-06"),
-            "verification_badges": prof.get("verification_badges", []),
-            "biography": prof.get("biography", "")
-        }
-        academicians_data.append(academician)
-    
-    students_data = [
-        {"id": "S001", "name": "Abebe Kebede", "research_proposal": "Mathematical modeling of infectious disease spread", "field_of_interest": "Applied Mathematics", "degree_background": "MSc in Mathematics", "email": "abebe.kebede@amu.edu.et", "institution": "Arba Minch University"},
-        {"id": "S002", "name": "Tigist Worku", "research_proposal": "Solar energy optimization for rural electrification", "field_of_interest": "Electrical Engineering", "degree_background": "MSc in Electrical Engineering", "email": "tigist.worku@aau.edu.et", "institution": "Addis Ababa University"},
-        {"id": "S003", "name": "Fasil Hailu", "research_proposal": "Water resource management for drought-prone regions", "field_of_interest": "Civil Engineering", "degree_background": "MSc in Hydraulic Engineering", "email": "fasil.hailu@bdu.edu.et", "institution": "Bahir Dar University"},
-        {"id": "S004", "name": "Meron Tekle", "research_proposal": "Machine learning for crop yield prediction", "field_of_interest": "Computer Science", "degree_background": "MSc in Computer Science", "email": "meron.tekle@ju.edu.et", "institution": "Jimma University"},
-        {"id": "S005", "name": "Yonas Desta", "research_proposal": "Climate-smart agricultural practices", "field_of_interest": "Agricultural Science", "degree_background": "MSc in Agriculture", "email": "yonas.desta@hu.edu.et", "institution": "Hawassa University"},
-        {"id": "S006", "name": "Hiwot Getachew", "research_proposal": "Epidemiological modeling of non-communicable diseases", "field_of_interest": "Public Health", "degree_background": "MPH in Epidemiology", "email": "hiwot.getachew@aau.edu.et", "institution": "Addis Ababa University"},
-        {"id": "S007", "name": "Dawit Eshetu", "research_proposal": "Control system design for automated irrigation", "field_of_interest": "Electrical Engineering", "degree_background": "MSc in Control Engineering", "email": "dawit.eshetu@bdu.edu.et", "institution": "Bahir Dar University"},
-        {"id": "S008", "name": "Sara Mohammed", "research_proposal": "Natural language processing for Amharic language", "field_of_interest": "Computer Science", "degree_background": "MSc in Computer Science", "email": "sara.mohammed@ju.edu.et", "institution": "Jimma University"},
-        {"id": "S009", "name": "Henok Amanuel", "research_proposal": "Industrial engineering optimization of manufacturing processes", "field_of_interest": "Mechanical Engineering", "degree_background": "MSc in Industrial Engineering", "email": "henok.amanuel@aau.edu.et", "institution": "Addis Ababa University"},
-        {"id": "S010", "name": "Beza Tadesse", "research_proposal": "Computational modeling of renewable energy materials", "field_of_interest": "Physics", "degree_background": "MSc in Physics", "email": "beza.tadesse@bdu.edu.et", "institution": "Bahir Dar University"}
-    ]
-
-    return pd.DataFrame(academicians_data), pd.DataFrame(students_data)
-
-def search_academicians(academicians_df, search_query, search_type):
-    if not search_query:
-        return academicians_df
-    
-    search_query = search_query.lower()
-    
-    if search_type == "Name":
-        return academicians_df[academicians_df['name'].str.lower().str.contains(search_query, na=False)]
-    elif search_type == "Research Area":
-        return academicians_df[academicians_df['research_interests'].str.lower().str.contains(search_query, na=False)]
-    elif search_type == "Institution":
-        return academicians_df[academicians_df['institution'].str.lower().str.contains(search_query, na=False)]
-    elif search_type == "Keyword":
-        mask = academicians_df['research_keywords'].apply(
-            lambda x: any(search_query in kw.lower() for kw in x) if isinstance(x, list) else False
-        )
-        return academicians_df[mask]
-    else:
-        mask = (
-            academicians_df['name'].str.lower().str.contains(search_query, na=False) |
-            academicians_df['institution'].str.lower().str.contains(search_query, na=False) |
-            academicians_df['research_interests'].str.lower().str.contains(search_query, na=False)
-        )
-        return academicians_df[mask]
-
-def generate_request_letter(student_name, student_institution, professor_name, professor_title, 
-                           professor_institution, research_topic, request_type, 
-                           student_email, student_phone):
-    date = datetime.now().strftime("%B %d, %Y")
-    
-    if request_type == "Research Supervision":
-        subject = f"Request for PhD Supervision - {student_name}"
-        body = f"I am writing to formally request your consideration to serve as my PhD supervisor. I am currently pursuing my doctoral studies at {student_institution}. My research focuses on: {research_topic}"
-    else:
-        subject = f"Request for Collaboration - {student_name}"
-        body = f"I am writing to propose a collaboration between {student_institution} and {professor_institution}. My research involves: {research_topic}"
-    
-    return {
-        'date': date,
-        'from_address': f"{student_name}\\n{student_institution}\\n{student_email}",
-        'to_address': f"{professor_name}\\n{professor_title}\\n{professor_institution}",
-        'subject': subject,
-        'body': body
-    }
-
-# ===================================================================
-# LOGIN PAGE - ORIGINAL
-# ===================================================================
-
-def show_login_page():
-    """Display the login page"""
-    init_user_db()
-    
+def show_about_page():
+    st.markdown("### About the Ethiopian Research Collaboration Portal")
     st.markdown("""
-    <div style="text-align:center; padding:1rem 0;">
-        <div style="font-size:4rem; margin-bottom:0.5rem;">🌿🇪🇹🎉</div>
-        <h1 style="font-size:3rem; margin:0;">Research Collaboration Portal</h1>
-        <p style="color:#5F6368; font-size:1.2rem; margin-top:0.5rem;">Sign in to access the Ethiopian Research Network</p>
-        <p style="color:#5F6368; font-size:1rem; margin-top:0.3rem;">Please register first if you don't have an account</p>
+    <div class="about-section">
+        <h2>🌿🇪🇹🎉 About This Portal</h2>
+        <p>The <b>Ethiopian Research Collaboration Portal</b> is a digital platform designed to bridge the gap between Ethiopian researchers, academic professionals, and students by facilitating meaningful academic collaborations.</p>
+        <div class="stat-grid">
+            <div class="stat-card"><span class="number">8</span><span class="label">👨‍🏫 Verified Professionals</span></div>
+            <div class="stat-card"><span class="number">10</span><span class="label">🎓 Student Researchers</span></div>
+            <div class="stat-card"><span class="number">100+</span><span class="label">📄 Publications</span></div>
+            <div class="stat-card"><span class="number">30+</span><span class="label">🎯 PhDs Completed</span></div>
+        </div>
+        <h3>📌 Key Importance</h3>
+        <ul><li>Connects Ethiopian researchers across institutions</li><li>Enhances research supervision and mentorship</li><li>Promotes joint research and publications</li><li>Creates consultancy opportunities</li></ul>
+        <div class="quote">"The Research Collaboration Portal is not just a tool—it's a movement to transform Ethiopian research from isolated silos into a connected, collaborative, and globally competitive academic ecosystem."</div>
+        <div class="footer-credit">🌿🇪🇹🎉 Dr. Berhanu Mekonen (PhD) · Arba Minch University · August 14, 2026</div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Tabs for Login and Register
-    tab1, tab2 = st.tabs(["🔐 Login", "📝 Register"])
-    
-    with tab1:
-        with st.container():
-            st.markdown('<div class="login-container">', unsafe_allow_html=True)
-            
-            # Login form
-            with st.form("login_form"):
-                username = st.text_input("📧 Email Address", placeholder="your.name@amu.edu.et", help="Use your AMU email address")
-                password = st.text_input("🔒 Password", type="password", placeholder="Enter your password")
-                
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    submitted = st.form_submit_button("Sign In", use_container_width=True)
-                
-                if submitted:
-                    if not username or not password:
-                        st.error("❌ Please enter both username and password.")
-                    else:
-                        success, message = login_user(username, password)
-                        if success:
-                            st.success(message)
-                            st.rerun()
-                        else:
-                            st.error(message)
-            
-            # Contact support info
-            st.markdown("""
-            <div style="text-align:center; margin-top:1.5rem; padding-top:1rem; border-top:1px solid #E8EAED;">
-                <p style="color:#5F6368; font-size:0.9rem; margin:0;">
-                    📧 For support, contact: <b style="color:#1A73E8;">berhanu.mekonen@amu.edu.et</b>
-                </p>
-                <p style="color:#5F6368; font-size:0.9rem; margin:0;">
-                    📞 Phone: <b style="color:#1A73E8;">+251 905 527 481</b>
-                </p>
-                <p style="color:#5F6368; font-size:0.85rem; margin-top:0.5rem;">
-                    ⚠️ No default accounts. Please register first.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    with tab2:
-        with st.container():
-            st.markdown('<div class="login-container">', unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style="text-align:center; margin-bottom:1.5rem;">
-                <h3 style="margin:0; color:#1A73E8;">Create New Account</h3>
-                <p style="color:#5F6368; font-size:0.95rem;">Join the Ethiopian Research Network</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Registration form
-            with st.form("register_form"):
-                new_username = st.text_input("📧 Email Address *", placeholder="your.name@amu.edu.et", help="Must end with @amu.edu.et")
-                new_password = st.text_input("🔒 Create Password *", type="password", placeholder="Minimum 6 characters", help="Password must be at least 6 characters long")
-                confirm_password = st.text_input("✅ Confirm Password *", type="password", placeholder="Re-enter your password")
-                
-                st.markdown("""
-                <div style="color:#5F6368; font-size:0.85rem; margin:0.5rem 0;">
-                    <span>📋 Username must be your AMU email address (e.g., <b>your.name@amu.edu.et</b>)</span>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    submitted = st.form_submit_button("Create Account", use_container_width=True)
-                
-                if submitted:
-                    if not new_username or not new_password or not confirm_password:
-                        st.error("❌ Please fill in all fields.")
-                    else:
-                        success, message = register_user(new_username, new_password, confirm_password)
-                        if success:
-                            st.success(message)
-                            st.info("✅ You can now go to the Login tab and sign in with your credentials.")
-                        else:
-                            st.error(message)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-
-# ===================================================================
-# MAIN APPLICATION - ORIGINAL WITH NEW FEATURES
-# ===================================================================
-
-def main():
-    # Initialize authentication state
-    init_user_db()
-    
-    # Show login page if not logged in
-    if not st.session_state.logged_in:
-        show_login_page()
-        return
-    
-    # If logged in, show the main application
-    academicians_df, students_df = load_data()
-    
-    if 'requests' not in st.session_state:
-        st.session_state.requests = []
-    if 'selected_professor' not in st.session_state:
-        st.session_state.selected_professor = None
-    if 'show_letter' not in st.session_state:
-        st.session_state.show_letter = False
-    if 'last_request' not in st.session_state:
-        st.session_state.last_request = None
-    if 'show_about' not in st.session_state:
+    if st.button("🔙 Back to Main Portal", use_container_width=True):
         st.session_state.show_about = False
-    
-    # Get current user info
-    current_user = st.session_state.current_user
-    user_display_name = current_user.split('@')[0].replace('.', ' ').title() if current_user else "User"
-    
-    # SIDEBAR - ORIGINAL WITH NAVIGATION
-    with st.sidebar:
-        st.markdown("### Research Portal")
-        st.markdown("---")
-        
-        # User info in sidebar
-        st.markdown(f"""
-        <div style="background:#E8F0FE;padding:1rem;border-radius:12px;margin-bottom:1rem;">
-            <p style="margin:0;font-weight:600;color:#1A73E8;">👤 {user_display_name}</p>
-            <p style="margin:0;font-size:0.85rem;color:#5F6368;">{current_user}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Notification count
-        unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
-        nav_options = ["🏠 Home", "🔍 Find Researchers", "💬 Forum", "📊 Analytics", "📋 My Requests"]
-        if unread > 0:
-            nav_options.append(f"📨 Notifications <span class='notification-badge'>{unread}</span>")
-        else:
-            nav_options.append("📨 Notifications")
-        
-        selected_page = st.radio("Navigation", nav_options, index=0)
-        st.session_state.current_page = selected_page
-        
-        if st.button("🚪 Logout", use_container_width=True):
-            logout_user()
-            st.rerun()
-            
-        st.markdown("---")
-        if st.button("About This Portal", use_container_width=True):
-            st.session_state.show_about = True
-            st.rerun()
-        st.markdown("---")
-        st.markdown("Connecting Ethiopian Researchers")
-        st.markdown("*Dr. Berhanu Mekonen (PhD), Arba Minch University, August 4, 2026*")
-    
-    # SHOW ABOUT PAGE
-    if st.session_state.show_about:
-        show_about_page()
-        return
-    
-    # Get current page
-    current_page = getattr(st.session_state, 'current_page', "🏠 Home")
-    
-    # HEADER - ORIGINAL WITH NATURE BACKGROUND
-    available_profs = len(academicians_df[academicians_df['available_for_collaboration'] == True])
-    total_publications = sum([len(p.get('publications', [])) for _, p in academicians_df.iterrows()])
-    total_completed_phds = sum([p.get('completed_phds', 0) for _, p in academicians_df.iterrows()])
-    
-    st.markdown(f"""
-    <div class="main-header">
-        <div class="header-content">
-            <div class="logo-section">
-                <div class="logo-icon">🌿🇪🇹🎉</div>
-                <div class="logo-text">
-                    <h1>Ethiopian Research Collaboration Portal</h1>
-                    <div class="subtitle">
-                        Connecting <span class="highlight">Ethiopian</span> Researchers & Academic Professionals
-                    </div>
-                    <div class="developer-credit">
-                        🌿🇪🇹🎉 <span class="highlight-name">Dr. Berhanu Mekonen (PhD)</span> · 
-                        <span class="highlight-institution">Arba Minch University</span> · 
-                        August 4, 2026
-                    </div>
-                </div>
-            </div>
-            <div class="header-right">
-                <div class="user-info">
-                    <div class="user-avatar">{user_display_name[0]}</div>
-                    <span class="user-name">{user_display_name}</span>
-                </div>
-                <div class="header-stats">
-                    <div class="stat-item">
-                        <span class="number">{len(academicians_df)}</span>
-                        <span class="label">Verified Professionals</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="number">{available_profs}</span>
-                        <span class="label">Available</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="number">{len(students_df)}</span>
-                        <span class="label">Student Researchers</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="number">{total_publications}</span>
-                        <span class="label">Publications</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="number">{total_completed_phds}</span>
-                        <span class="label">PhDs Completed</span>
-                    </div>
-                </div>
-                <!-- Research Dropdown Button -->
-                <div class="research-dropdown">
-                    <button class="research-btn">
-                        🌍 Researches in the world 🎉<span class="arrow-down">▼</span>
-                    </button>
-                    <div class="research-dropdown-content">
-                        <div class="dropdown-title">📚 Research Resources</div>
-                        <a href="https://scholar.google.com/" target="_blank" class="link-item">
-                            <span class="link-icon">🔬</span>
-                            <span class="link-text">Google Scholar</span>
-                            <span class="link-url">scholar.google.com</span>
-                            <span class="link-arrow">→</span>
-                        </a>
-                        <hr class="divider">
-                        <a href="https://www.scimagojr.com/" target="_blank" class="link-item">
-                            <span class="link-icon">📊</span>
-                            <span class="link-text">Check Scopus Indexed or not</span>
-                            <span class="link-url">scimagojr.com</span>
-                            <span class="link-arrow">→</span>
-                        </a>
-                        <hr class="divider">
-                        <a href="https://mjl.clarivate.com/home" target="_blank" class="link-item">
-                            <span class="link-icon">📋</span>
-                            <span class="link-text">Check Web of Science Indexed or not</span>
-                            <span class="link-url">mjl.clarivate.com</span>
-                            <span class="link-arrow">→</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="ethiopian-stripe"></div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # STATUS BAR - ORIGINAL
-    st.markdown(f"""
-    <div class="status-bar">
-        <div>
-            <span class="status-dot online"></span>
-            <span class="status-text">System Online · <span class="highlight-green">{len(academicians_df)}</span> verified professionals ready for collaboration</span>
-        </div>
-        <div>
-            <span class="live-badge">LIVE · {datetime.now().strftime('%H:%M:%S')}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # ===================================================================
-    # PAGE: HOME / FIND RESEARCHERS - ORIGINAL
-    # ===================================================================
-    if current_page == "🏠 Home" or current_page == "🔍 Find Researchers":
-        st.markdown("### Find Academic Professionals")
-        
-        with st.container():
-            st.markdown('<div class="search-section">', unsafe_allow_html=True)
-            col1, col2, col3 = st.columns([1, 1.5, 0.8])
-            with col1:
-                prof_search_type = st.selectbox("Search by:", ["All Fields", "Name", "Research Area", "Institution", "Keyword"])
-            with col2:
-                prof_search_query = st.text_input("Enter search term:", placeholder="e.g., mathematics, queuing...")
-            with col3:
-                show_available_only = st.checkbox("Available Only", value=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        filtered_profs = search_academicians(academicians_df, prof_search_query, prof_search_type)
-        if show_available_only:
-            filtered_profs = filtered_profs[filtered_profs['available_for_collaboration'] == True]
-        
-        st.caption(f"Found {len(filtered_profs)} verified professional(s)")
-        
-        for _, prof in filtered_profs.iterrows():
-            slots = prof['supervisory_capacity'] - prof['current_students']
-            status_class = "badge-available" if slots > 0 else "badge-full"
-            status_text = f"{slots} slots available" if slots > 0 else "Fully booked"
-            
-            with st.expander(f"{prof['profile_image']} {prof['name']} - {prof['title']}", expanded=False):
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    verification_html = ""
-                    for badge in prof.get('verification_badges', []):
-                        verification_html += f'<span class="badge-verified">{badge}</span>'
-                    
-                    social_links_html = ""
-                    if prof.get('orcid_url'):
-                        social_links_html += f'<a href="{prof["orcid_url"]}" target="_blank" class="social-link social-link-orcid">ORCID</a>'
-                    if prof.get('researchgate_url'):
-                        social_links_html += f'<a href="{prof["researchgate_url"]}" target="_blank" class="social-link social-link-researchgate">ResearchGate</a>'
-                    if prof.get('google_scholar_url'):
-                        social_links_html += f'<a href="{prof["google_scholar_url"]}" target="_blank" class="social-link social-link-scholar">Google Scholar</a>'
-                    if prof.get('scopus_url'):
-                        social_links_html += f'<a href="{prof["scopus_url"]}" target="_blank" class="social-link social-link-scopus">Scopus</a>'
-                    
-                    if social_links_html:
-                        social_links_html = f'<div class="social-links">{social_links_html}</div>'
-                    
-                    st.markdown(f"""
-                    <div class="professor-card">
-                        <div class="card-header">
-                            <div>
-                                <h3>{prof['profile_image']} {prof['name']}</h3>
-                                <span class="title-badge">{prof['title']}</span>
-                                <div style="margin-top:8px;">{verification_html}</div>
-                                {social_links_html}
-                            </div>
-                            <div>
-                                <span class="{status_class}">{status_text}</span>
-                                <br>
-                                <span style="color:#FBBC04;">⭐ Trust Score: {prof['trust_score']}%</span>
-                            </div>
-                        </div>
-                        <div>
-                            <p><b>🏛️ Institution:</b> {prof['institution']}</p>
-                            <p><b>📚 Department:</b> {prof['department']}</p>
-                            <p><b>🎓 Education:</b> {prof['education']}</p>
-                            <p><b>🔬 Research Interests:</b> {prof['research_interests']}</p>
-                            <div>
-                                {"".join(f'<span class="badge-collab">{t}</span>' for t in prof.get('collaboration_types', []))}
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if prof.get('publications'):
-                        with st.expander("📄 Publications"):
-                            for pub in prof['publications']:
-                                st.write(f"• {pub}")
-                
-                with col2:
-                    st.markdown(f"""
-                    <div style="background:#F8F9FA;border:1px solid #E8EAED;border-radius:12px;padding:1.5rem;">
-                        <h4 style="color:#202124;">📬 Contact</h4>
-                        <p style="color:#202124;">✉️ {prof['email']}</p>
-                        <p style="color:#202124;">📞 {prof['phone']}</p>
-                        <p style="color:#202124;">📊 Completed PhDs: <span style="color:#1A73E8;font-weight:700;">{prof['completed_phds']}</span></p>
-                        <p style="color:#202124;">📋 Available Slots: <span style="color:#1A73E8;font-weight:700;">{slots}</span></p>
-                        <p style="color:#202124;">📈 h-index: <span style="color:#1A73E8;font-weight:700;">{prof['h_index']}</span> | 📑 Citations: <span style="color:#1A73E8;font-weight:700;">{prof['total_citations']}</span></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if slots > 0:
-                        if st.button(f"Request Collaboration with {prof['name'].split()[0]}", key=f"req_{prof['id']}"):
-                            st.session_state.selected_professor = prof.to_dict()
-                            st.success(f"Ready to request collaboration with {prof['name']}")
-                            st.rerun()
-                    else:
-                        st.warning("No available slots")
-    
-    # ===================================================================
-    # PAGE: REQUEST COLLABORATION - ORIGINAL
-    # ===================================================================
-    if current_page == "📋 My Requests" or st.session_state.selected_professor:
-        st.markdown("### Request Collaboration")
-        
-        if st.session_state.selected_professor:
-            prof = st.session_state.selected_professor
-            
-            st.markdown(f"""
-            <div style="background:#E8F0FE;border:1px solid #1A73E8;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border-left:5px solid #1A73E8;">
-                <h4 style="color:#202124;">Requesting: {prof['name']} - {prof['title']}</h4>
-                <p style="color:#5F6368;">🏛️ {prof['institution']} • 📚 {prof['department']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            with st.form("collaboration_request"):
-                request_type = st.selectbox("Type of Collaboration", prof.get('collaboration_types', ['Research Supervision', 'Joint Research', 'Consultancy']))
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    requester_name = st.text_input("Full Name *", value=user_display_name)
-                    requester_email = st.text_input("Email Address *", value=current_user)
-                with col2:
-                    requester_institution = st.text_input("Institution *", value="Arba Minch University")
-                    requester_phone = st.text_input("Phone Number", value="")
-                
-                research_topic = st.text_area("Research Topic/Proposal *", height=150)
-                
-                submitted = st.form_submit_button("Submit Request", use_container_width=True)
-                
-                if submitted:
-                    if not requester_name or not requester_email or not requester_institution or not research_topic:
-                        st.error("Please fill in all required fields")
-                    else:
-                        letter_data = generate_request_letter(
-                            requester_name, requester_institution,
-                            prof['name'], prof['title'], prof['institution'],
-                            research_topic, request_type,
-                            requester_email, requester_phone
-                        )
-                        
-                        request = {
-                            'id': f"REQ{len(st.session_state.requests)+1:04d}",
-                            'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            'requester': requester_name,
-                            'requester_institution': requester_institution,
-                            'professor': prof['name'],
-                            'professor_institution': prof['institution'],
-                            'request_type': request_type,
-                            'research_topic': research_topic,
-                            'status': 'Pending',
-                            'letter': letter_data
-                        }
-                        st.session_state.requests.append(request)
-                        st.session_state.last_request = request
-                        st.session_state.show_letter = True
-                        
-                        add_notification(f"📩 Collaboration request submitted to {prof['name']}", "success")
-                        st.success(f"✅ Request submitted successfully to {prof['name']}!")
-                        st.balloons()
-                        
-                        st.markdown(f"""
-                        <div class="letter-box">
-                            <h2>REQUEST FOR {request_type.upper()}</h2>
-                            <p class="date"><b>Date:</b> {letter_data['date']}</p>
-                            <p><b>From:</b><br>{letter_data['from_address']}</p>
-                            <p><b>To:</b><br>{letter_data['to_address']}</p>
-                            <p><b>Subject:</b> {letter_data['subject']}</p>
-                            <p>Dear {prof['name'].split()[0]},</p>
-                            <p>{letter_data['body']}</p>
-                            <div class="signature">
-                                <p>Yours sincerely,</p>
-                                <p><b>{requester_name}</b><br>{requester_institution}</p>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-        else:
-            st.info("👈 Please go to 'Find Professionals' and click 'Request Collaboration'")
-        
-        # Show existing requests
-        st.markdown("### My Collaboration Requests")
-        
-        if not st.session_state.requests:
-            st.info("You haven't submitted any collaboration requests yet.")
-        else:
-            for req in reversed(st.session_state.requests):
-                with st.expander(f"📩 {req['request_type']} - {req['professor']} ({req['status']})"):
-                    st.markdown(f"""
-                    <div style="background:#F8F9FA;padding:1.5rem;border-radius:12px;border:1px solid #E8EAED;">
-                        <p><b>Institution:</b> {req['professor_institution']}</p>
-                        <p><b>Topic:</b> {req['research_topic'][:150]}...</p>
-                        <p><b>Submitted:</b> {req['date']}</p>
-                        <p><b>Status:</b> <span style="color:#1A73E8;font-weight:600;">{req['status']}</span></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-    # ===================================================================
-    # PAGE: FORUM - NEW
-    # ===================================================================
-    if current_page == "💬 Forum":
-        st.markdown("### 💬 Research Discussion Forum")
-        st.caption("Share ideas, discuss research, and connect with fellow researchers.")
-        
-        with st.expander("➕ Create New Post", expanded=False):
-            with st.form("new_post"):
-                title = st.text_input("Title", placeholder="Enter your post title...")
-                content = st.text_area("Content", height=150, placeholder="Share your research ideas, questions, or insights...")
-                tags = st.text_input("Tags (comma separated)", placeholder="e.g., optimization, machine learning, epidemiology")
-                submitted = st.form_submit_button("📝 Publish Post", use_container_width=True)
-                
-                if submitted and title and content:
-                    create_forum_post(title, content, user_display_name, tags)
-                    st.success("✅ Post published successfully!")
-                    st.rerun()
-                elif submitted:
-                    st.error("❌ Please enter both title and content.")
-        
-        if st.session_state.forum_posts:
-            st.markdown(f"### 📝 Recent Posts ({len(st.session_state.forum_posts)} total)")
-            
-            for post in reversed(st.session_state.forum_posts):
-                with st.expander(f"📌 {post['title']} - by {post['author']}", expanded=False):
-                    st.markdown(f"""
-                    <div class="forum-post">
-                        <div class="post-header">
-                            <span class="post-title">{post['title']}</span>
-                            <span class="post-meta">🕐 {post['date']} · ❤️ {post['likes']} likes</span>
-                        </div>
-                        <div style="padding:0.5rem 0;border-top:1px solid #E8EAED;border-bottom:1px solid #E8EAED;">
-                            {post['content']}
-                        </div>
-                        <div class="post-tags">
-                            {"".join(f'<span class="tag">#{tag}</span>' for tag in post['tags'])}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns([1, 5])
-                    with col1:
-                        if st.button(f"❤️ {post['likes']}", key=f"like_{post['id']}"):
-                            like_post(post['id'])
-                            st.rerun()
-                    
-                    st.markdown("---")
-                    st.markdown("#### 💬 Comments")
-                    if post['comments']:
-                        for comment in post['comments']:
-                            st.markdown(f"""
-                            <div style="background:#F8F9FA;padding:0.75rem;border-radius:8px;margin-bottom:0.5rem;border-left:3px solid #1A73E8;">
-                                <strong>{comment['author']}</strong> <span style="color:#5F6368;font-size:0.8rem;">({comment['date']})</span>
-                                <p style="margin:0.2rem 0 0 0;">{comment['content']}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.caption("No comments yet. Be the first to comment!")
-                    
-                    with st.form(f"comment_form_{post['id']}"):
-                        comment_content = st.text_area("Add a comment", key=f"comment_{post['id']}", placeholder="Share your thoughts...")
-                        submitted = st.form_submit_button("💬 Submit Comment", use_container_width=True)
-                        if submitted and comment_content:
-                            add_comment_to_post(post['id'], user_display_name, comment_content)
-                            st.success("Comment added!")
-                            st.rerun()
-                        elif submitted:
-                            st.error("❌ Please enter a comment.")
-        else:
-            st.info("No posts yet. Start a discussion! 🚀")
-    
-    # ===================================================================
-    # PAGE: NOTIFICATIONS - NEW
-    # ===================================================================
-    if "📨 Notifications" in current_page:
-        show_notification_center()
-    
-    # ===================================================================
-    # PAGE: ANALYTICS - NEW
-    # ===================================================================
-    if current_page == "📊 Analytics":
-        st.markdown("### 📊 Research Impact Dashboard")
-        
-        pub_data = []
-        for _, prof in academicians_df.iterrows():
-            pub_data.append({
-                'name': prof['name'].split()[1] if len(prof['name'].split()) > 1 else prof['name'],
-                'publications': len(prof.get('publications', [])),
-                'citations': prof.get('total_citations', 0),
-                'h_index': prof.get('h_index', 0),
-                'trust_score': prof.get('trust_score', 0)
-            })
-        
-        df_pub = pd.DataFrame(pub_data)
-        
-        if not df_pub.empty:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                fig = px.bar(df_pub, 
-                            x='name', 
-                            y='publications',
-                            title='Publications by Researcher',
-                            color='publications',
-                            color_continuous_scale='Greens',
-                            text='publications')
-                fig.update_layout(height=400, showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with col2:
-                fig2 = px.scatter(df_pub,
-                                 x='publications',
-                                 y='citations',
-                                 size='h_index',
-                                 text='name',
-                                 title='Publications vs Citations',
-                                 color='trust_score',
-                                 color_continuous_scale='Viridis')
-                fig2.update_layout(height=400)
-                st.plotly_chart(fig2, use_container_width=True)
-            
-            col3, col4 = st.columns(2)
-            
-            with col3:
-                fig3 = px.bar(df_pub,
-                            x='name',
-                            y='h_index',
-                            title='h-index by Researcher',
-                            color='h_index',
-                            color_continuous_scale='Blues',
-                            text='h_index')
-                fig3.update_layout(height=400, showlegend=False)
-                st.plotly_chart(fig3, use_container_width=True)
-            
-            with col4:
-                fig4 = px.bar(df_pub,
-                            x='name',
-                            y='trust_score',
-                            title='Trust Score by Researcher',
-                            color='trust_score',
-                            color_continuous_scale='Oranges',
-                            text='trust_score')
-                fig4.update_layout(height=400, showlegend=False)
-                st.plotly_chart(fig4, use_container_width=True)
-            
-            st.markdown("#### 📊 Summary Statistics")
-            col5, col6, col7, col8 = st.columns(4)
-            
-            with col5:
-                st.metric("Total Publications", df_pub['publications'].sum())
-            with col6:
-                st.metric("Total Citations", df_pub['citations'].sum())
-            with col7:
-                st.metric("Average h-index", f"{df_pub['h_index'].mean():.1f}")
-            with col8:
-                st.metric("Average Trust Score", f"{df_pub['trust_score'].mean():.1f}%")
+        st.rerun()
 
 if __name__ == "__main__":
     main()

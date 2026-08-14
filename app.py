@@ -102,7 +102,9 @@ def login_user(username, password):
     if verify_password(password, stored_hash):
         st.session_state.logged_in = True
         st.session_state.current_user = username
-        display_name = username.split('@')[0].replace('.', ' ').title()
+        # Get full name from profile, fallback to email-derived
+        profile = st.session_state.user_profiles.get(username, {})
+        display_name = profile.get('name', username.split('@')[0].replace('.', ' ').title())
         add_notification(f"Welcome back, {display_name}!", "success")
         add_points(username, 5, "Daily login")
         return True, "✅ Login successful!"
@@ -113,7 +115,7 @@ def logout_user():
     st.session_state.logged_in = False
     st.session_state.current_user = None
 
-def register_user(username, password, confirm_password):
+def register_user(username, password, confirm_password, full_name=""):
     init_user_db()
     if not username.endswith("@amu.edu.et"):
         return False, "❌ Username must end with @amu.edu.et"
@@ -123,7 +125,16 @@ def register_user(username, password, confirm_password):
         return False, "❌ Passwords do not match."
     if len(password) < 6:
         return False, "❌ Password must be at least 6 characters long."
+    if not full_name.strip():
+        return False, "❌ Please enter your full name."
+
     st.session_state.user_db[username] = hash_password(password)
+
+    # Store full name in user profiles immediately
+    if username not in st.session_state.user_profiles:
+        st.session_state.user_profiles[username] = {}
+    st.session_state.user_profiles[username]['name'] = full_name.strip()
+
     add_notification(f"🎉 New user registered: {username}", "success")
     return True, "✅ Registration successful! You can now login."
 
@@ -143,59 +154,59 @@ st.markdown("""
         --dark: #0a1a0a;
         --dark-card: #0f2a0f;
     }
-    
+
     /* Global Styles - White Background */
     html, body, .stApp {
         font-size: 18px !important;
         line-height: 1.8 !important;
         background: #FFFFFF !important;
     }
-    
+
     .stApp, .main, .block-container {
         background: #FFFFFF !important;
         color: #202124 !important;
     }
-    
+
     /* All text - dark for readability on white */
     h1, h2, h3, h4, h5, h6, p, li, span, div, .stMarkdown, .stTextInput, .stSelectbox, .stButton {
         color: #202124 !important;
         font-weight: 500 !important;
     }
-    
+
     /* Headings - Google Blue/Gradient */
-    h1 { 
-        font-size: 3.5rem !important; 
+    h1 {
+        font-size: 3.5rem !important;
         font-weight: 800 !important;
         background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    h2 { 
-        font-size: 2.8rem !important; 
+    h2 {
+        font-size: 2.8rem !important;
         font-weight: 700 !important;
         color: #1A73E8 !important;
         border-bottom: 3px solid #E8F0FE;
         padding-bottom: 0.5rem;
     }
-    h3 { 
-        font-size: 2.2rem !important; 
+    h3 {
+        font-size: 2.2rem !important;
         font-weight: 600 !important;
         color: #1A73E8 !important;
     }
-    h4 { 
-        font-size: 1.8rem !important; 
+    h4 {
+        font-size: 1.8rem !important;
         font-weight: 600 !important;
         color: #202124 !important;
     }
-    
+
     p, li, .stMarkdown {
         font-size: 1.2rem !important;
         font-weight: 400 !important;
         line-height: 2 !important;
         color: #202124 !important;
     }
-    
+
     /* LOGIN PAGE STYLES */
     .login-container {
         max-width: 500px;
@@ -206,20 +217,20 @@ st.markdown("""
         border-radius: 16px;
         box-shadow: 0 4px 24px rgba(0,0,0,0.08);
     }
-    
+
     .login-container h1 {
         text-align: center;
         font-size: 2.5rem !important;
         margin-bottom: 0.5rem;
     }
-    
+
     .login-container .login-subtitle {
         text-align: center;
         color: #5F6368 !important;
         font-size: 1.1rem !important;
         margin-bottom: 2rem;
     }
-    
+
     .login-container .login-error {
         background: #FCE8E6 !important;
         border: 1px solid #EA4335;
@@ -229,7 +240,7 @@ st.markdown("""
         color: #EA4335 !important;
         font-weight: 500 !important;
     }
-    
+
     .login-container .login-success {
         background: #E6F4EA !important;
         border: 1px solid #34A853;
@@ -239,7 +250,7 @@ st.markdown("""
         color: #34A853 !important;
         font-weight: 500 !important;
     }
-    
+
     .login-container .input-label {
         font-weight: 600 !important;
         color: #202124 !important;
@@ -247,7 +258,7 @@ st.markdown("""
         display: block;
         margin-bottom: 0.3rem;
     }
-    
+
     .login-container .input-hint {
         color: #5F6368 !important;
         font-size: 0.85rem !important;
@@ -255,25 +266,25 @@ st.markdown("""
         display: block;
         margin-top: 0.2rem;
     }
-    
+
     .login-container .register-link {
         text-align: center;
         margin-top: 1.5rem;
         color: #5F6368 !important;
         font-size: 1rem !important;
     }
-    
+
     .login-container .register-link a {
         color: #1A73E8 !important;
         font-weight: 600 !important;
         text-decoration: none;
         cursor: pointer;
     }
-    
+
     .login-container .register-link a:hover {
         text-decoration: underline;
     }
-    
+
     .login-container .login-btn {
         background: linear-gradient(135deg, #1A73E8, #4285F4) !important;
         color: #FFFFFF !important;
@@ -287,12 +298,12 @@ st.markdown("""
         transition: all 0.3s !important;
         box-shadow: 0 2px 8px rgba(26,115,232,0.25) !important;
     }
-    
+
     .login-container .login-btn:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 16px rgba(26,115,232,0.35) !important;
     }
-    
+
     .login-container .register-btn {
         background: linear-gradient(135deg, #34A853, #2D9249) !important;
         color: #FFFFFF !important;
@@ -306,12 +317,12 @@ st.markdown("""
         transition: all 0.3s !important;
         box-shadow: 0 2px 8px rgba(52,168,83,0.25) !important;
     }
-    
+
     .login-container .register-btn:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 16px rgba(52,168,83,0.35) !important;
     }
-    
+
     .login-container .toggle-link {
         background: none !important;
         border: none !important;
@@ -321,11 +332,11 @@ st.markdown("""
         padding: 0 !important;
         text-decoration: underline !important;
     }
-    
+
     .login-container .toggle-link:hover {
         color: #1557B0 !important;
     }
-    
+
     /* User info in header */
     .user-info {
         display: flex;
@@ -337,7 +348,7 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.3);
         backdrop-filter: blur(10px);
     }
-    
+
     .user-info .user-avatar {
         width: 40px;
         height: 40px;
@@ -350,13 +361,13 @@ st.markdown("""
         font-weight: 700;
         font-size: 1.2rem;
     }
-    
+
     .user-info .user-name {
         color: #202124 !important;
         font-weight: 600 !important;
         font-size: 1rem !important;
     }
-    
+
     .user-info .logout-btn {
         background: #FCE8E6 !important;
         border: 1px solid #EA4335 !important;
@@ -368,12 +379,12 @@ st.markdown("""
         cursor: pointer !important;
         transition: all 0.3s;
     }
-    
+
     .user-info .logout-btn:hover {
         background: #EA4335 !important;
         color: #FFFFFF !important;
     }
-    
+
     /* ABOUT SECTION - White Background */
     .about-section {
         background: #FFFFFF !important;
@@ -383,7 +394,7 @@ st.markdown("""
         margin: 2rem 0;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
     }
-    
+
     .about-section h1 {
         font-size: 3.5rem !important;
         text-align: center;
@@ -394,7 +405,7 @@ st.markdown("""
         margin-bottom: 1.5rem;
         font-weight: 800 !important;
     }
-    
+
     .about-section h2 {
         font-size: 2.5rem !important;
         color: #1A73E8 !important;
@@ -403,14 +414,14 @@ st.markdown("""
         padding-bottom: 0.5rem;
         font-weight: 700 !important;
     }
-    
+
     .about-section h3 {
         font-size: 1.8rem !important;
         color: #1A73E8 !important;
         margin-top: 1.5rem;
         font-weight: 600 !important;
     }
-    
+
     .about-section .highlight-box {
         background: #F8F9FA !important;
         border-left: 4px solid #1A73E8;
@@ -418,18 +429,18 @@ st.markdown("""
         margin: 1rem 0;
         border-radius: 8px;
     }
-    
+
     .about-section .highlight-box p {
         color: #202124 !important;
     }
-    
+
     .about-section .stat-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
         margin: 1.5rem 0;
     }
-    
+
     .about-section .stat-card {
         background: #F8F9FA !important;
         border: 1px solid #E8EAED;
@@ -438,37 +449,37 @@ st.markdown("""
         text-align: center;
         transition: all 0.3s;
     }
-    
+
     .about-section .stat-card:hover {
         transform: translateY(-3px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         border-color: #1A73E8;
     }
-    
+
     .about-section .stat-card .number {
         font-size: 3rem !important;
         font-weight: 800 !important;
         color: #1A73E8 !important;
         display: block;
     }
-    
+
     .about-section .stat-card .label {
         font-size: 1.1rem !important;
         color: #5F6368 !important;
         font-weight: 500 !important;
     }
-    
+
     .about-section ul {
         color: #202124 !important;
         font-size: 1.2rem !important;
         font-weight: 400 !important;
         line-height: 2.2;
     }
-    
+
     .about-section ul li {
         color: #202124 !important;
     }
-    
+
     .about-section .quote {
         font-style: italic;
         font-size: 1.4rem !important;
@@ -480,7 +491,7 @@ st.markdown("""
         border-top: 1px solid #E8EAED;
         border-bottom: 1px solid #E8EAED;
     }
-    
+
     .about-section .footer-credit {
         text-align: center;
         margin-top: 2.5rem;
@@ -490,10 +501,10 @@ st.markdown("""
         font-size: 1rem !important;
         font-weight: 400 !important;
     }
-    
+
     /* ===== MAIN HEADER - NATURE BACKGROUND ===== */
     .main-header {
-        background: linear-gradient(rgba(27, 94, 32, 0.65), rgba(13, 59, 13, 0.75)), 
+        background: linear-gradient(rgba(27, 94, 32, 0.65), rgba(13, 59, 13, 0.75)),
                     url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=400&fit=crop') !important;
         background-size: cover !important;
         background-position: center !important;
@@ -506,7 +517,7 @@ st.markdown("""
         position: relative !important;
         overflow: hidden !important;
     }
-    
+
     .main-header::before {
         content: '' !important;
         position: absolute !important;
@@ -517,7 +528,7 @@ st.markdown("""
         background: linear-gradient(135deg, rgba(27, 94, 32, 0.3), rgba(13, 59, 13, 0.4)) !important;
         z-index: 0 !important;
     }
-    
+
     .main-header .header-content {
         position: relative !important;
         z-index: 1 !important;
@@ -527,14 +538,14 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 20px;
     }
-    
+
     .main-header .logo-section {
         display: flex;
         align-items: center;
         gap: 25px;
         flex: 1;
     }
-    
+
     .main-header .logo-icon {
         width: 75px;
         height: 75px;
@@ -550,12 +561,12 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.2);
         animation: pulse 3s infinite;
     }
-    
+
     @keyframes pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.05); }
     }
-    
+
     .main-header .logo-text h1 {
         font-size: 3.5rem !important;
         font-weight: 800 !important;
@@ -565,7 +576,7 @@ st.markdown("""
         margin: 0;
         text-shadow: 0 2px 30px rgba(0,0,0,0.3);
     }
-    
+
     .main-header .logo-text .subtitle {
         color: rgba(255, 255, 255, 0.95) !important;
         font-size: 1.4rem !important;
@@ -573,12 +584,12 @@ st.markdown("""
         margin: 5px 0 0 0;
         text-shadow: 0 1px 15px rgba(0,0,0,0.2);
     }
-    
+
     .main-header .logo-text .subtitle .highlight {
         color: #FFD700 !important;
         font-weight: 600 !important;
     }
-    
+
     .main-header .logo-text .developer-credit {
         color: rgba(255, 255, 255, 0.7) !important;
         font-size: 1rem !important;
@@ -588,31 +599,31 @@ st.markdown("""
         letter-spacing: 0.5px;
         text-shadow: 0 1px 10px rgba(0,0,0,0.2);
     }
-    
+
     .main-header .logo-text .developer-credit .highlight-name {
         color: #FFD700 !important;
         font-weight: 600 !important;
     }
-    
+
     .main-header .logo-text .developer-credit .highlight-institution {
         color: #90EE90 !important;
         font-weight: 600 !important;
     }
-    
+
     .main-header .header-right {
         display: flex;
         align-items: center;
         gap: 30px;
         flex-wrap: wrap;
     }
-    
+
     .main-header .header-stats {
         display: flex;
         gap: 25px;
         flex-wrap: wrap;
         align-items: center;
     }
-    
+
     .main-header .stat-item {
         background: rgba(255, 255, 255, 0.12) !important;
         backdrop-filter: blur(10px);
@@ -623,20 +634,20 @@ st.markdown("""
         min-width: 100px;
         transition: all 0.3s;
     }
-    
+
     .main-header .stat-item:hover {
         border-color: #FFD700;
         transform: translateY(-2px);
         background: rgba(255, 255, 255, 0.2) !important;
     }
-    
+
     .main-header .stat-item .number {
         font-size: 2.5rem !important;
         font-weight: 800 !important;
         color: #FFD700 !important;
         display: block;
     }
-    
+
     .main-header .stat-item .label {
         font-size: 0.95rem !important;
         font-weight: 500 !important;
@@ -644,14 +655,14 @@ st.markdown("""
         display: block;
         margin-top: 4px;
     }
-    
+
     /* Research Dropdown Button - Updated for dark header */
     .research-dropdown {
         position: relative;
         display: inline-block;
         margin-left: 5px;
     }
-    
+
     .research-btn {
         background: rgba(255, 215, 0, 0.2) !important;
         backdrop-filter: blur(10px);
@@ -671,7 +682,7 @@ st.markdown("""
         letter-spacing: 0.3px;
         user-select: none;
     }
-    
+
     .research-btn:hover {
         background: rgba(255, 215, 0, 0.35) !important;
         transform: translateY(-2px) scale(1.02);
@@ -679,18 +690,18 @@ st.markdown("""
         color: #FFFFFF !important;
         border-color: #FFD700 !important;
     }
-    
+
     .research-btn .arrow-down {
         display: inline-block;
         transition: transform 0.3s ease;
         font-size: 0.8rem;
         color: rgba(255,255,255,0.8);
     }
-    
+
     .research-dropdown:hover .arrow-down {
         transform: rotate(180deg);
     }
-    
+
     .research-dropdown-content {
         display: none;
         position: absolute;
@@ -707,25 +718,25 @@ st.markdown("""
         z-index: 1000;
         margin-bottom: 10px;
     }
-    
+
     .research-dropdown:hover .research-dropdown-content {
         display: block;
     }
-    
+
     .research-dropdown-content::-webkit-scrollbar {
         width: 6px;
     }
-    
+
     .research-dropdown-content::-webkit-scrollbar-track {
         background: #F8F9FA;
         border-radius: 10px;
     }
-    
+
     .research-dropdown-content::-webkit-scrollbar-thumb {
         background: #1A73E8;
         border-radius: 10px;
     }
-    
+
     .research-dropdown-content .dropdown-title {
         color: #1A73E8 !important;
         font-size: 1.2rem;
@@ -741,7 +752,7 @@ st.markdown("""
         background: #FFFFFF;
         z-index: 2;
     }
-    
+
     .research-dropdown-content .link-item {
         display: flex;
         align-items: center;
@@ -755,22 +766,22 @@ st.markdown("""
         font-weight: 500 !important;
         cursor: pointer;
     }
-    
+
     .research-dropdown-content .link-item:hover {
         background: #E8F0FE !important;
         transform: translateX(5px);
     }
-    
+
     .research-dropdown-content .link-item .link-icon {
         font-size: 1.2rem;
         flex-shrink: 0;
     }
-    
+
     .research-dropdown-content .link-item .link-text {
         flex: 1;
         color: #202124 !important;
     }
-    
+
     .research-dropdown-content .link-item .link-url {
         color: #5F6368 !important;
         font-size: 0.7rem;
@@ -780,30 +791,30 @@ st.markdown("""
         text-overflow: ellipsis;
         max-width: 100px;
     }
-    
+
     .research-dropdown-content .link-item .link-arrow {
         color: #1A73E8 !important;
         font-size: 0.9rem;
         transition: all 0.3s ease;
     }
-    
+
     .research-dropdown-content .link-item:hover .link-arrow {
         transform: translateX(4px);
     }
-    
+
     .research-dropdown-content .divider {
         border: none;
         border-top: 1px solid #E8EAED;
         margin: 4px 0;
     }
-    
+
     .ethiopian-stripe {
         height: 5px;
         background: linear-gradient(to right, #078930, #FCDD09, #DA121A);
         border-radius: 3px;
         margin: 12px 0 0 0;
     }
-    
+
     /* STATUS BAR - Google Style */
     .status-bar {
         background: #F8F9FA !important;
@@ -817,7 +828,7 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 15px;
     }
-    
+
     .status-bar .status-dot {
         width: 14px;
         height: 14px;
@@ -825,28 +836,28 @@ st.markdown("""
         display: inline-block;
         animation: blink 2s infinite;
     }
-    
-    .status-bar .status-dot.online { 
-        background: #34A853; 
+
+    .status-bar .status-dot.online {
+        background: #34A853;
         box-shadow: 0 0 20px rgba(52,168,83,0.3);
     }
-    
+
     @keyframes blink {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
     }
-    
+
     .status-bar .status-text {
         color: #202124 !important;
         font-size: 1.2rem !important;
         font-weight: 500 !important;
     }
-    
+
     .status-bar .status-text .highlight-green {
         color: #34A853 !important;
         font-weight: 700 !important;
     }
-    
+
     .status-bar .live-badge {
         background: linear-gradient(135deg, #1A73E8, #4285F4);
         color: #FFFFFF !important;
@@ -856,7 +867,7 @@ st.markdown("""
         font-weight: 600 !important;
         border: none;
     }
-    
+
     /* PROFESSOR CARD - Google Style */
     .professor-card {
         background: #FFFFFF !important;
@@ -868,13 +879,13 @@ st.markdown("""
         position: relative;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    
+
     .professor-card:hover {
         transform: translateY(-4px);
         border-color: #1A73E8 !important;
         box-shadow: 0 8px 32px rgba(0,0,0,0.08);
     }
-    
+
     .professor-card .card-header {
         display: flex;
         justify-content: space-between;
@@ -883,44 +894,44 @@ st.markdown("""
         gap: 10px;
         margin-bottom: 12px;
     }
-    
+
     .professor-card .card-header .name-title h3 {
         font-size: 2rem !important;
         font-weight: 700 !important;
         color: #202124 !important;
         margin: 0;
     }
-    
+
     .professor-card .card-header .name-title .title-badge {
         font-size: 1.1rem !important;
         font-weight: 500 !important;
         color: #5F6368 !important;
     }
-    
+
     .professor-card .card-header .status-badge {
         text-align: right;
     }
-    
-    .professor-card .badge-available { 
-        background: #E6F4EA !important; 
-        color: #34A853 !important; 
+
+    .professor-card .badge-available {
+        background: #E6F4EA !important;
+        color: #34A853 !important;
         border: 1px solid #34A853;
         padding: 6px 18px;
         border-radius: 25px;
         font-size: 0.9rem !important;
         font-weight: 600 !important;
     }
-    
-    .professor-card .badge-full { 
-        background: #FCE8E6 !important; 
-        color: #EA4335 !important; 
+
+    .professor-card .badge-full {
+        background: #FCE8E6 !important;
+        color: #EA4335 !important;
         border: 1px solid #EA4335;
         padding: 6px 18px;
         border-radius: 25px;
         font-size: 0.9rem !important;
         font-weight: 600 !important;
     }
-    
+
     .professor-card .trust-score {
         color: #FBBC04 !important;
         font-size: 1rem !important;
@@ -928,7 +939,7 @@ st.markdown("""
         display: block;
         margin-top: 4px;
     }
-    
+
     .professor-card .badge-verified {
         display: inline-block;
         padding: 3px 12px;
@@ -940,7 +951,7 @@ st.markdown("""
         color: #1A73E8 !important;
         border: 1px solid #1A73E8;
     }
-    
+
     .professor-card .badge-collab {
         background: #E8F0FE !important;
         color: #1A73E8 !important;
@@ -952,14 +963,14 @@ st.markdown("""
         font-size: 0.85rem !important;
         font-weight: 500 !important;
     }
-    
+
     .professor-card .social-links {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
         margin: 10px 0;
     }
-    
+
     .professor-card .social-link {
         display: inline-flex;
         align-items: center;
@@ -973,59 +984,59 @@ st.markdown("""
         border: 1px solid #E8EAED;
         color: #202124 !important;
     }
-    
+
     .professor-card .social-link:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-    
+
     .professor-card .social-link-orcid {
         background: #E8F0FE !important;
         color: #1A73E8 !important;
         border-color: #1A73E8;
     }
-    
+
     .professor-card .social-link-researchgate {
         background: #E6F4EA !important;
         color: #34A853 !important;
         border-color: #34A853;
     }
-    
+
     .professor-card .social-link-scholar {
         background: #FCE8E6 !important;
         color: #EA4335 !important;
         border-color: #EA4335;
     }
-    
+
     .professor-card .social-link-scopus {
         background: #FFF3E0 !important;
         color: #FB8C00 !important;
         border-color: #FB8C00;
     }
-    
+
     .professor-card .info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
         margin-top: 15px;
     }
-    
+
     .professor-card .info-grid .info-item {
         margin-bottom: 6px;
     }
-    
+
     .professor-card .info-grid .info-item .label {
         color: #5F6368 !important;
         font-size: 0.9rem !important;
         font-weight: 500 !important;
     }
-    
+
     .professor-card .info-grid .info-item .value {
         color: #202124 !important;
         font-size: 1.1rem !important;
         font-weight: 500 !important;
     }
-    
+
     .professor-card .contact-box {
         background: #F8F9FA !important;
         border: 1px solid #E8EAED;
@@ -1033,39 +1044,39 @@ st.markdown("""
         padding: 1.5rem;
         margin-top: 15px;
     }
-    
+
     .professor-card .contact-box h4 {
         color: #202124 !important;
         font-size: 1.2rem !important;
         font-weight: 600 !important;
         margin-bottom: 10px;
     }
-    
+
     .professor-card .contact-box p {
         margin: 4px 0;
         font-size: 1rem !important;
         font-weight: 500 !important;
         color: #202124 !important;
     }
-    
+
     .professor-card .contact-box .stat-row {
         display: flex;
         gap: 20px;
         flex-wrap: wrap;
         margin-top: 8px;
     }
-    
+
     .professor-card .contact-box .stat-row span {
         color: #5F6368 !important;
         font-size: 0.95rem !important;
         font-weight: 500 !important;
     }
-    
+
     .professor-card .contact-box .stat-row .highlight-gold {
         color: #1A73E8 !important;
         font-weight: 700 !important;
     }
-    
+
     /* LETTER BOX - Google Style */
     .letter-box {
         background: #FFFFFF !important;
@@ -1079,7 +1090,7 @@ st.markdown("""
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         font-size: 1.2rem !important;
     }
-    
+
     .letter-box h2 {
         text-align: center;
         font-size: 2.2rem !important;
@@ -1087,19 +1098,19 @@ st.markdown("""
         color: #1A73E8 !important;
         -webkit-text-fill-color: #1A73E8 !important;
     }
-    
+
     .letter-box .date {
         text-align: right;
         font-size: 1.1rem !important;
         color: #5F6368 !important;
     }
-    
+
     .letter-box .signature {
         margin-top: 3rem;
         border-top: 1px solid #E8EAED;
         padding-top: 2rem;
     }
-    
+
     /* BUTTONS - Google Style */
     .stButton > button {
         font-size: 1.2rem !important;
@@ -1114,12 +1125,12 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(26,115,232,0.25) !important;
         min-height: 55px !important;
     }
-    
+
     .stButton > button:hover {
         transform: translateY(-3px) !important;
         box-shadow: 0 4px 16px rgba(26,115,232,0.35) !important;
     }
-    
+
     /* TABS - Google Style */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
@@ -1128,7 +1139,7 @@ st.markdown("""
         padding: 8px;
         border: 1px solid #E8EAED;
     }
-    
+
     .stTabs [data-baseweb="tab"] {
         border-radius: 12px;
         padding: 14px 30px;
@@ -1136,14 +1147,14 @@ st.markdown("""
         font-weight: 500 !important;
         font-size: 1.1rem !important;
     }
-    
+
     .stTabs [aria-selected="true"] {
         background: #FFFFFF !important;
         color: #1A73E8 !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
         border: 1px solid #E8EAED;
     }
-    
+
     /* INPUT FIELDS - Google Style */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
@@ -1158,25 +1169,25 @@ st.markdown("""
         min-height: 55px !important;
         transition: all 0.3s !important;
     }
-    
+
     .stTextInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {
         border-color: #1A73E8 !important;
         box-shadow: 0 0 0 3px rgba(26,115,232,0.15) !important;
     }
-    
+
     .stSelectbox > div > div {
         background: #FFFFFF !important;
         border-radius: 12px !important;
         padding: 4px !important;
     }
-    
+
     .stSelectbox > div > div > div {
         color: #202124 !important;
         font-size: 1.1rem !important;
         font-weight: 400 !important;
     }
-    
+
     /* SEARCH SECTION - Google Style */
     .search-section {
         background: #F8F9FA !important;
@@ -1185,47 +1196,47 @@ st.markdown("""
         padding: 2rem;
         margin-bottom: 2rem;
     }
-    
+
     .search-section label {
         font-size: 1.1rem !important;
         font-weight: 500 !important;
         color: #202124 !important;
     }
-    
+
     /* Checkbox - Google Style */
     .stCheckbox label {
         font-size: 1.1rem !important;
         font-weight: 500 !important;
         color: #202124 !important;
     }
-    
+
     .stCheckbox input[type="checkbox"] {
         accent-color: #1A73E8 !important;
     }
-    
+
     /* Sidebar - Google Style */
     .css-1d391kg, .css-12w0qpk, [data-testid="stSidebar"] {
         background: #F8F9FA !important;
         border-right: 1px solid #E8EAED !important;
     }
-    
+
     .css-1d391kg .stMarkdown,
     [data-testid="stSidebar"] .stMarkdown {
         color: #202124 !important;
     }
-    
+
     .css-1d391kg h1, .css-1d391kg h2, .css-1d391kg h3,
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
         color: #1A73E8 !important;
     }
-    
+
     /* Caption text */
     .stCaption {
         color: #5F6368 !important;
         font-size: 1rem !important;
         font-weight: 400 !important;
     }
-    
+
     /* Notification styles */
     .notification-badge {
         background: #EA4335 !important;
@@ -1236,7 +1247,7 @@ st.markdown("""
         font-weight: 700 !important;
         margin-left: 5px;
     }
-    
+
     .notification-item {
         padding: 0.75rem;
         border-radius: 8px;
@@ -1244,17 +1255,17 @@ st.markdown("""
         border-left: 4px solid #1A73E8;
         background: #F8F9FA;
     }
-    
+
     .notification-item.unread {
         background: #E8F0FE;
         border-left-color: #EA4335;
     }
-    
+
     .notification-item .notification-time {
         color: #5F6368 !important;
         font-size: 0.8rem !important;
     }
-    
+
     .forum-post {
         background: #FFFFFF !important;
         border: 1px solid #E8EAED;
@@ -1262,32 +1273,32 @@ st.markdown("""
         padding: 1.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .forum-post .post-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 0.5rem;
     }
-    
+
     .forum-post .post-title {
         font-size: 1.4rem !important;
         font-weight: 700 !important;
         color: #1A73E8 !important;
     }
-    
+
     .forum-post .post-meta {
         color: #5F6368 !important;
         font-size: 0.9rem !important;
     }
-    
+
     .forum-post .post-tags {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
         margin-top: 0.5rem;
     }
-    
+
     .forum-post .post-tags .tag {
         background: #E8F0FE !important;
         color: #1A73E8 !important;
@@ -1296,7 +1307,7 @@ st.markdown("""
         font-size: 0.8rem !important;
         font-weight: 500 !important;
     }
-    
+
     /* CHAT STYLES */
     .chat-message {
         padding: 0.75rem 1rem;
@@ -1304,29 +1315,29 @@ st.markdown("""
         margin-bottom: 0.5rem;
         max-width: 80%;
     }
-    
+
     .chat-message.user {
         background: #E8F0FE !important;
         border: 1px solid #1A73E8;
         margin-left: auto;
     }
-    
+
     .chat-message.other {
         background: #F8F9FA !important;
         border: 1px solid #E8EAED;
     }
-    
+
     .chat-message .chat-author {
         font-weight: 600 !important;
         font-size: 0.9rem !important;
         color: #1A73E8 !important;
     }
-    
+
     .chat-message .chat-time {
         color: #5F6368 !important;
         font-size: 0.7rem !important;
     }
-    
+
     /* BADGE STYLES */
     .badge-display {
         display: flex;
@@ -1334,7 +1345,7 @@ st.markdown("""
         gap: 8px;
         margin: 10px 0;
     }
-    
+
     .badge-item {
         background: #E8F0FE !important;
         border: 1px solid #1A73E8;
@@ -1347,13 +1358,13 @@ st.markdown("""
         align-items: center;
         gap: 6px;
     }
-    
+
     .badge-item.gold {
         background: #FFF8E1 !important;
         border-color: #FFD700;
         color: #F9A825 !important;
     }
-    
+
     /* FEEDBACK STYLES */
     .feedback-item {
         background: #FFFFFF !important;
@@ -1362,19 +1373,19 @@ st.markdown("""
         padding: 1.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .feedback-item .feedback-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 0.5rem;
     }
-    
+
     .feedback-item .feedback-rating {
         color: #FFD700;
         font-size: 1.2rem;
     }
-    
+
     /* DASHBOARD CARDS */
     .dashboard-card {
         background: #FFFFFF !important;
@@ -1384,19 +1395,19 @@ st.markdown("""
         text-align: center;
         transition: all 0.3s;
     }
-    
+
     .dashboard-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         border-color: #1A73E8;
     }
-    
+
     .dashboard-card .card-value {
         font-size: 2.8rem !important;
         font-weight: 800 !important;
         color: #1A73E8 !important;
     }
-    
+
     .dashboard-card .card-label {
         color: #5F6368 !important;
         font-size: 1rem !important;
@@ -2002,29 +2013,58 @@ def show_notification_center():
 def show_onboarding():
     if st.session_state.onboarding_complete:
         return
+
+    profile = st.session_state.user_profiles.get(st.session_state.current_user, {})
+
+    # If name and institution already exist (from registration), skip Step 1
+    if profile.get('name') and profile.get('institution') and st.session_state.onboarding_step == 1:
+        st.session_state.onboarding_step = 2
+
     st.markdown("### 🚀 Welcome! Let's set up your profile")
     step = st.session_state.onboarding_step
+
     if step == 1:
         st.markdown("#### Step 1: Tell us about yourself")
-        name = st.text_input("Full Name", value="")
-        institution = st.selectbox("Your Institution", ["Arba Minch University", "Addis Ababa University", "Bahir Dar University", "Jimma University", "Hawassa University", "Other"])
-        department = st.text_input("Department")
+        default_name = profile.get('name', '')
+        default_institution = profile.get('institution', 'Arba Minch University')
+        default_department = profile.get('department', '')
+
+        name = st.text_input("Full Name", value=default_name)
+        institution = st.selectbox(
+            "Your Institution",
+            ["Arba Minch University", "Addis Ababa University", "Bahir Dar University",
+             "Jimma University", "Hawassa University", "Other"],
+            index=0 if default_institution == "Arba Minch University" else 0
+        )
+        department = st.text_input("Department", value=default_department)
+
         if st.button("Next →"):
-            st.session_state.user_profiles[st.session_state.current_user] = {
-                "name": name, "institution": institution, "department": department
-            }
+            st.session_state.user_profiles[st.session_state.current_user].update({
+                "name": name,
+                "institution": institution,
+                "department": department
+            })
             st.session_state.onboarding_step = 2
             st.rerun()
+
     elif step == 2:
         st.markdown("#### Step 2: Your research interests")
-        interests = st.multiselect("Select your research interests", ["Agriculture", "Medicine", "Engineering", "Environmental Science", "Physics", "Mathematics", "Computer Science", "Biology", "Chemistry", "Social Sciences"])
+        interests = st.multiselect(
+            "Select your research interests",
+            ["Agriculture", "Medicine", "Engineering", "Environmental Science",
+             "Physics", "Mathematics", "Computer Science", "Biology", "Chemistry", "Social Sciences"]
+        )
         if st.button("Next →"):
             st.session_state.user_profiles[st.session_state.current_user]["interests"] = interests
             st.session_state.onboarding_step = 3
             st.rerun()
+
     elif step == 3:
         st.markdown("#### Step 3: What are you looking for?")
-        collab_type = st.radio("I am looking to:", ["Find Collaborators", "Join a Project", "Find a Supervisor", "Offer Mentorship"])
+        collab_type = st.radio(
+            "I am looking to:",
+            ["Find Collaborators", "Join a Project", "Find a Supervisor", "Offer Mentorship"]
+        )
         if st.button("🚀 Start Exploring!"):
             st.session_state.user_profiles[st.session_state.current_user]["collab_type"] = collab_type
             st.session_state.onboarding_complete = True
@@ -2187,7 +2227,7 @@ def load_data():
             "biography": prof.get("biography", "")
         }
         academicians_data.append(academician)
-    
+
     students_data = [
         {"id": "S001", "name": "Abebe Kebede", "research_proposal": "Mathematical modeling of infectious disease spread", "field_of_interest": "Applied Mathematics", "degree_background": "MSc in Mathematics", "email": "abebe.kebede@amu.edu.et", "institution": "Arba Minch University"},
         {"id": "S002", "name": "Tigist Worku", "research_proposal": "Solar energy optimization for rural electrification", "field_of_interest": "Electrical Engineering", "degree_background": "MSc in Electrical Engineering", "email": "tigist.worku@aau.edu.et", "institution": "Addis Ababa University"},
@@ -2225,8 +2265,8 @@ def search_academicians(academicians_df, search_query, search_type):
         )
         return academicians_df[mask]
 
-def generate_request_letter(student_name, student_institution, professor_name, professor_title, 
-                           professor_institution, research_topic, request_type, 
+def generate_request_letter(student_name, student_institution, professor_name, professor_title,
+                           professor_institution, research_topic, request_type,
                            student_email, student_phone):
     date = datetime.now().strftime("%B %d, %Y")
     if request_type == "Research Supervision":
@@ -2301,9 +2341,13 @@ def show_login_page():
             </div>
             """, unsafe_allow_html=True)
             with st.form("register_form"):
+                # FULL NAME FIELD - ADDED HERE
+                full_name = st.text_input("👤 Full Name *", placeholder="e.g., Berhanu Mekonen")
+
                 new_username = st.text_input("📧 Email Address *", placeholder="your.name@amu.edu.et", help="Must end with @amu.edu.et")
                 new_password = st.text_input("🔒 Create Password *", type="password", placeholder="Minimum 6 characters", help="Password must be at least 6 characters long")
                 confirm_password = st.text_input("✅ Confirm Password *", type="password", placeholder="Re-enter your password")
+
                 st.markdown("""
                 <div style="color:#5F6368; font-size:0.85rem; margin:0.5rem 0;">
                     <span>📋 Username must be your AMU email address (e.g., <b>your.name@amu.edu.et</b>)</span>
@@ -2313,10 +2357,10 @@ def show_login_page():
                 with col2:
                     submitted = st.form_submit_button("Create Account", use_container_width=True)
                 if submitted:
-                    if not new_username or not new_password or not confirm_password:
+                    if not full_name or not new_username or not new_password or not confirm_password:
                         st.error("❌ Please fill in all fields.")
                     else:
-                        success, message = register_user(new_username, new_password, confirm_password)
+                        success, message = register_user(new_username, new_password, confirm_password, full_name)
                         if success:
                             st.success(message)
                             st.info("✅ You can now go to the Login tab and sign in with your credentials.")
@@ -2347,7 +2391,8 @@ def main():
         st.session_state.show_about = False
 
     current_user = st.session_state.current_user
-    user_display_name = current_user.split('@')[0].replace('.', ' ').title() if current_user else "User"
+    profile = st.session_state.user_profiles.get(current_user, {})
+    user_display_name = profile.get('name', current_user.split('@')[0].replace('.', ' ').title())
 
     # SIDEBAR
     with st.sidebar:
@@ -2419,8 +2464,8 @@ def main():
                         Connecting <span class="highlight">Ethiopian</span> Researchers & Academic Professionals
                     </div>
                     <div class="developer-credit">
-                        🌿🇪🇹🎉 <span class="highlight-name">Berhanu Mekonen, PhD</span> · 
-                        <span class="highlight-institution">Arba Minch University</span> · 
+                        🌿🇪🇹🎉 <span class="highlight-name">Berhanu Mekonen, PhD</span> ·
+                        <span class="highlight-institution">Arba Minch University</span> ·
                         August 14, 2026
                     </div>
                 </div>
@@ -2498,7 +2543,10 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # PAGE ROUTING
+    # ===================================================================
+    # PAGE ROUTING (ORIGINAL + NEW)
+    # ===================================================================
+
     if current_page == "🏠 Home" or current_page == "🔍 Find Researchers":
         if current_page == "🏠 Home":
             show_researcher_of_month()
@@ -2682,6 +2730,8 @@ def main():
                 submitted = st.form_submit_button("📝 Publish Post", use_container_width=True)
                 if submitted and title and content:
                     create_forum_post(title, content, user_display_name, tags)
+                    if len(st.session_state.forum_posts) == 1:
+                        add_badge(st.session_state.current_user, "💬 First Post")
                     st.success("✅ Post published successfully!")
                     st.rerun()
                 elif submitted:
@@ -2771,6 +2821,7 @@ def main():
             c3.metric("Average h-index", f"{df_pub['h_index'].mean():.1f}")
             c4.metric("Average Trust Score", f"{df_pub['trust_score'].mean():.1f}%")
 
+    # --- NEW PAGES ---
     elif current_page == "💬 Chat":
         show_chat()
     elif current_page == "📅 Events":

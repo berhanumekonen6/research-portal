@@ -139,7 +139,7 @@ def register_user(username, password, confirm_password, full_name=""):
     return True, "✅ Registration successful! You can now login."
 
 # ===================================================================
-# CSS STYLES - ORIGINAL WITH NATURE BACKGROUND + RESPONSIVE
+# CSS STYLES - ORIGINAL WITH NATURE BACKGROUND HEADER & FIXED DROPDOWN
 # ===================================================================
 
 st.markdown("""
@@ -154,95 +154,357 @@ st.markdown("""
         --dark: #0a1a0a;
         --dark-card: #0f2a0f;
     }
-    
+
     /* Global Styles - White Background */
     html, body, .stApp {
         font-size: 18px !important;
         line-height: 1.8 !important;
         background: #FFFFFF !important;
     }
-    
+
     .stApp, .main, .block-container {
         background: #FFFFFF !important;
         color: #202124 !important;
     }
-    
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .block-container { padding: 0.5rem 0.75rem !important; }
-        .main-header .logo-text h1 { font-size: 1.8rem !important; }
-        .main-header .logo-text .subtitle { font-size: 1rem !important; }
-        .main-header .header-stats .stat-item { min-width: 60px !important; padding: 8px 12px !important; }
-        .main-header .header-stats .stat-item .number { font-size: 1.2rem !important; }
-        .main-header .header-stats .stat-item .label { font-size: 0.7rem !important; }
-        .professor-card .info-grid { grid-template-columns: 1fr !important; }
-        .research-dropdown-content { min-width: 250px !important; right: -20px !important; }
-        .stat-grid { grid-template-columns: 1fr 1fr !important; }
-        .about-section .stat-grid { grid-template-columns: 1fr 1fr !important; }
-    }
-    
-    @media (max-width: 480px) {
-        .block-container { padding: 0.25rem 0.5rem !important; }
-        .main-header .logo-text h1 { font-size: 1.4rem !important; }
-        .main-header .header-content { flex-direction: column !important; align-items: flex-start !important; }
-        .main-header .header-right { width: 100% !important; flex-direction: column !important; align-items: stretch !important; }
-        .main-header .header-stats { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-        .main-header .stat-item { min-width: auto !important; padding: 6px 10px !important; }
-        .main-header .logo-icon { width: 50px !important; height: 50px !important; font-size: 1.8rem !important; }
-        .professor-card { padding: 1rem !important; }
-        .professor-card .card-header { flex-direction: column !important; }
-        .status-bar { flex-direction: column !important; padding: 0.8rem 1rem !important; }
-        .letter-box { padding: 1.5rem !important; }
-        .about-section { padding: 1.5rem !important; }
-        .about-section h1 { font-size: 2rem !important; }
-        .research-dropdown-content { min-width: 200px !important; right: 0 !important; }
-        .research-btn { font-size: 0.9rem !important; padding: 8px 16px !important; }
-        .login-container { padding: 1.5rem !important; margin: 1rem !important; }
-        .search-section { padding: 1rem !important; }
-    }
-    
-    /* All text - dark for readability */
+
+    /* All text - dark for readability on white */
     h1, h2, h3, h4, h5, h6, p, li, span, div, .stMarkdown, .stTextInput, .stSelectbox, .stButton {
         color: #202124 !important;
         font-weight: 500 !important;
     }
-    
-    h1 { 
-        font-size: 3.5rem !important; 
+
+    /* Headings - Google Blue/Gradient */
+    h1 {
+        font-size: 3.5rem !important;
         font-weight: 800 !important;
         background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    h2 { 
-        font-size: 2.8rem !important; 
+    h2 {
+        font-size: 2.8rem !important;
         font-weight: 700 !important;
         color: #1A73E8 !important;
         border-bottom: 3px solid #E8F0FE;
         padding-bottom: 0.5rem;
     }
-    h3 { 
-        font-size: 2.2rem !important; 
+    h3 {
+        font-size: 2.2rem !important;
         font-weight: 600 !important;
         color: #1A73E8 !important;
     }
-    h4 { 
-        font-size: 1.8rem !important; 
+    h4 {
+        font-size: 1.8rem !important;
         font-weight: 600 !important;
         color: #202124 !important;
     }
-    
+
     p, li, .stMarkdown {
         font-size: 1.2rem !important;
         font-weight: 400 !important;
         line-height: 2 !important;
         color: #202124 !important;
     }
-    
+
+    /* LOGIN PAGE STYLES */
+    .login-container {
+        max-width: 500px;
+        margin: 3rem auto;
+        padding: 2.5rem;
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    .login-container h1 {
+        text-align: center;
+        font-size: 2.5rem !important;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-container .login-subtitle {
+        text-align: center;
+        color: #5F6368 !important;
+        font-size: 1.1rem !important;
+        margin-bottom: 2rem;
+    }
+
+    .login-container .login-error {
+        background: #FCE8E6 !important;
+        border: 1px solid #EA4335;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin: 0.5rem 0;
+        color: #EA4335 !important;
+        font-weight: 500 !important;
+    }
+
+    .login-container .login-success {
+        background: #E6F4EA !important;
+        border: 1px solid #34A853;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin: 0.5rem 0;
+        color: #34A853 !important;
+        font-weight: 500 !important;
+    }
+
+    .login-container .input-label {
+        font-weight: 600 !important;
+        color: #202124 !important;
+        font-size: 1rem !important;
+        display: block;
+        margin-bottom: 0.3rem;
+    }
+
+    .login-container .input-hint {
+        color: #5F6368 !important;
+        font-size: 0.85rem !important;
+        font-weight: 400 !important;
+        display: block;
+        margin-top: 0.2rem;
+    }
+
+    .login-container .register-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: #5F6368 !important;
+        font-size: 1rem !important;
+    }
+
+    .login-container .register-link a {
+        color: #1A73E8 !important;
+        font-weight: 600 !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .login-container .register-link a:hover {
+        text-decoration: underline;
+    }
+
+    .login-container .login-btn {
+        background: linear-gradient(135deg, #1A73E8, #4285F4) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        padding: 0.9rem 2rem !important;
+        border-radius: 30px !important;
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+        width: 100%;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        box-shadow: 0 2px 8px rgba(26,115,232,0.25) !important;
+    }
+
+    .login-container .login-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 16px rgba(26,115,232,0.35) !important;
+    }
+
+    .login-container .register-btn {
+        background: linear-gradient(135deg, #34A853, #2D9249) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        padding: 0.9rem 2rem !important;
+        border-radius: 30px !important;
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+        width: 100%;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        box-shadow: 0 2px 8px rgba(52,168,83,0.25) !important;
+    }
+
+    .login-container .register-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 16px rgba(52,168,83,0.35) !important;
+    }
+
+    .login-container .toggle-link {
+        background: none !important;
+        border: none !important;
+        color: #1A73E8 !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        text-decoration: underline !important;
+    }
+
+    .login-container .toggle-link:hover {
+        color: #1557B0 !important;
+    }
+
+    /* User info in header */
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.9) !important;
+        padding: 8px 20px;
+        border-radius: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(10px);
+    }
+
+    .user-info .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1A73E8, #4285F4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+
+    .user-info .user-name {
+        color: #202124 !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+
+    .user-info .logout-btn {
+        background: #FCE8E6 !important;
+        border: 1px solid #EA4335 !important;
+        color: #EA4335 !important;
+        padding: 6px 16px;
+        border-radius: 25px;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.3s;
+    }
+
+    .user-info .logout-btn:hover {
+        background: #EA4335 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* ABOUT SECTION - White Background */
+    .about-section {
+        background: #FFFFFF !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 2.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
+    }
+
+    .about-section h1 {
+        font-size: 3.5rem !important;
+        text-align: center;
+        background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        margin-bottom: 1.5rem;
+        font-weight: 800 !important;
+    }
+
+    .about-section h2 {
+        font-size: 2.5rem !important;
+        color: #1A73E8 !important;
+        margin-top: 2rem;
+        border-bottom: 3px solid #E8F0FE;
+        padding-bottom: 0.5rem;
+        font-weight: 700 !important;
+    }
+
+    .about-section h3 {
+        font-size: 1.8rem !important;
+        color: #1A73E8 !important;
+        margin-top: 1.5rem;
+        font-weight: 600 !important;
+    }
+
+    .about-section .highlight-box {
+        background: #F8F9FA !important;
+        border-left: 4px solid #1A73E8;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+    }
+
+    .about-section .highlight-box p {
+        color: #202124 !important;
+    }
+
+    .about-section .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin: 1.5rem 0;
+    }
+
+    .about-section .stat-card {
+        background: #F8F9FA !important;
+        border: 1px solid #E8EAED;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s;
+    }
+
+    .about-section .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-color: #1A73E8;
+    }
+
+    .about-section .stat-card .number {
+        font-size: 3rem !important;
+        font-weight: 800 !important;
+        color: #1A73E8 !important;
+        display: block;
+    }
+
+    .about-section .stat-card .label {
+        font-size: 1.1rem !important;
+        color: #5F6368 !important;
+        font-weight: 500 !important;
+    }
+
+    .about-section ul {
+        color: #202124 !important;
+        font-size: 1.2rem !important;
+        font-weight: 400 !important;
+        line-height: 2.2;
+    }
+
+    .about-section ul li {
+        color: #202124 !important;
+    }
+
+    .about-section .quote {
+        font-style: italic;
+        font-size: 1.4rem !important;
+        font-weight: 500 !important;
+        color: #1A73E8 !important;
+        text-align: center;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        border-top: 1px solid #E8EAED;
+        border-bottom: 1px solid #E8EAED;
+    }
+
+    .about-section .footer-credit {
+        text-align: center;
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #E8EAED;
+        color: #5F6368 !important;
+        font-size: 1rem !important;
+        font-weight: 400 !important;
+    }
+
     /* ===== MAIN HEADER - NATURE BACKGROUND ===== */
     .main-header {
-        background: linear-gradient(rgba(27, 94, 32, 0.65), rgba(13, 59, 13, 0.75)), 
+        background: linear-gradient(rgba(27, 94, 32, 0.65), rgba(13, 59, 13, 0.75)),
                     url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=400&fit=crop') !important;
         background-size: cover !important;
         background-position: center !important;
@@ -255,7 +517,7 @@ st.markdown("""
         position: relative !important;
         overflow: hidden !important;
     }
-    
+
     .main-header::before {
         content: '' !important;
         position: absolute !important;
@@ -266,7 +528,7 @@ st.markdown("""
         background: linear-gradient(135deg, rgba(27, 94, 32, 0.3), rgba(13, 59, 13, 0.4)) !important;
         z-index: 0 !important;
     }
-    
+
     .main-header .header-content {
         position: relative !important;
         z-index: 1 !important;
@@ -276,14 +538,14 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 20px;
     }
-    
+
     .main-header .logo-section {
         display: flex;
         align-items: center;
         gap: 25px;
         flex: 1;
     }
-    
+
     .main-header .logo-icon {
         width: 75px;
         height: 75px;
@@ -299,12 +561,12 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.2);
         animation: pulse 3s infinite;
     }
-    
+
     @keyframes pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.05); }
     }
-    
+
     .main-header .logo-text h1 {
         font-size: 3.5rem !important;
         font-weight: 800 !important;
@@ -314,7 +576,7 @@ st.markdown("""
         margin: 0;
         text-shadow: 0 2px 30px rgba(0,0,0,0.3);
     }
-    
+
     .main-header .logo-text .subtitle {
         color: rgba(255, 255, 255, 0.95) !important;
         font-size: 1.4rem !important;
@@ -322,12 +584,12 @@ st.markdown("""
         margin: 5px 0 0 0;
         text-shadow: 0 1px 15px rgba(0,0,0,0.2);
     }
-    
+
     .main-header .logo-text .subtitle .highlight {
         color: #FFD700 !important;
         font-weight: 600 !important;
     }
-    
+
     .main-header .logo-text .developer-credit {
         color: rgba(255, 255, 255, 0.7) !important;
         font-size: 1rem !important;
@@ -337,31 +599,31 @@ st.markdown("""
         letter-spacing: 0.5px;
         text-shadow: 0 1px 10px rgba(0,0,0,0.2);
     }
-    
+
     .main-header .logo-text .developer-credit .highlight-name {
         color: #FFD700 !important;
         font-weight: 600 !important;
     }
-    
+
     .main-header .logo-text .developer-credit .highlight-institution {
         color: #90EE90 !important;
         font-weight: 600 !important;
     }
-    
+
     .main-header .header-right {
         display: flex;
         align-items: center;
         gap: 30px;
         flex-wrap: wrap;
     }
-    
+
     .main-header .header-stats {
         display: flex;
         gap: 25px;
         flex-wrap: wrap;
         align-items: center;
     }
-    
+
     .main-header .stat-item {
         background: rgba(255, 255, 255, 0.12) !important;
         backdrop-filter: blur(10px);
@@ -372,20 +634,20 @@ st.markdown("""
         min-width: 100px;
         transition: all 0.3s;
     }
-    
+
     .main-header .stat-item:hover {
         border-color: #FFD700;
         transform: translateY(-2px);
         background: rgba(255, 255, 255, 0.2) !important;
     }
-    
+
     .main-header .stat-item .number {
         font-size: 2.5rem !important;
         font-weight: 800 !important;
         color: #FFD700 !important;
         display: block;
     }
-    
+
     .main-header .stat-item .label {
         font-size: 0.95rem !important;
         font-weight: 500 !important;
@@ -393,105 +655,15 @@ st.markdown("""
         display: block;
         margin-top: 4px;
     }
-    
-    /* User info in header */
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        background: rgba(255, 255, 255, 0.9) !important;
-        padding: 8px 20px;
-        border-radius: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        backdrop-filter: blur(10px);
-    }
-    
-    .user-info .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #1A73E8, #4285F4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #FFFFFF;
-        font-weight: 700;
-        font-size: 1.2rem;
-    }
-    
-    .user-info .user-name {
-        color: #202124 !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-    }
-    
-    .ethiopian-stripe {
-        height: 5px;
-        background: linear-gradient(to right, #078930, #FCDD09, #DA121A);
-        border-radius: 3px;
-        margin: 12px 0 0 0;
-    }
-    
-    /* STATUS BAR */
-    .status-bar {
-        background: #F8F9FA !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        padding: 1.2rem 2.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 15px;
-    }
-    
-    .status-bar .status-dot {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        display: inline-block;
-        animation: blink 2s infinite;
-    }
-    
-    .status-bar .status-dot.online { 
-        background: #34A853; 
-        box-shadow: 0 0 20px rgba(52,168,83,0.3);
-    }
-    
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    .status-bar .status-text {
-        color: #202124 !important;
-        font-size: 1.2rem !important;
-        font-weight: 500 !important;
-    }
-    
-    .status-bar .status-text .highlight-green {
-        color: #34A853 !important;
-        font-weight: 700 !important;
-    }
-    
-    .status-bar .live-badge {
-        background: linear-gradient(135deg, #1A73E8, #4285F4);
-        color: #FFFFFF !important;
-        padding: 6px 18px;
-        border-radius: 25px;
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-        border: none;
-    }
-    
-    /* Research Dropdown Button */
+
+    /* ===== RESEARCH DROPDOWN - FIXED ===== */
     .research-dropdown {
         position: relative;
         display: inline-block;
         margin-left: 5px;
+        z-index: 9999;
     }
-    
+
     .research-btn {
         background: rgba(255, 215, 0, 0.2) !important;
         backdrop-filter: blur(10px);
@@ -511,7 +683,7 @@ st.markdown("""
         letter-spacing: 0.3px;
         user-select: none;
     }
-    
+
     .research-btn:hover {
         background: rgba(255, 215, 0, 0.35) !important;
         transform: translateY(-2px) scale(1.02);
@@ -519,25 +691,27 @@ st.markdown("""
         color: #FFFFFF !important;
         border-color: #FFD700 !important;
     }
-    
+
     .research-btn .arrow-down {
         display: inline-block;
         transition: transform 0.3s ease;
         font-size: 0.8rem;
         color: rgba(255,255,255,0.8);
     }
-    
+
     .research-dropdown:hover .arrow-down {
         transform: rotate(180deg);
     }
-    
+
+    /* FIXED: Opens downward and to the right */
     .research-dropdown-content {
         display: none;
         position: absolute;
-        right: 0;
-        bottom: 100%;
+        left: 0;                 /* Aligns to left edge → opens to the right */
+        top: 100%;               /* Opens downward */
         background: #FFFFFF !important;
         min-width: 400px;
+        max-width: 90vw;         /* Prevents overflow on small screens */
         max-height: 350px;
         overflow-y: auto;
         border: 1px solid #E8EAED;
@@ -545,13 +719,37 @@ st.markdown("""
         padding: 1.2rem;
         box-shadow: 0 8px 32px rgba(0,0,0,0.12);
         z-index: 1000;
-        margin-bottom: 10px;
+        margin-top: 10px;        /* Space below button */
     }
-    
+
     .research-dropdown:hover .research-dropdown-content {
         display: block;
     }
-    
+
+    /* On smaller screens, align to right edge to stay visible */
+    @media (max-width: 768px) {
+        .research-dropdown-content {
+            left: auto;
+            right: 0;
+            min-width: 280px;
+            max-width: 85vw;
+        }
+    }
+
+    .research-dropdown-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .research-dropdown-content::-webkit-scrollbar-track {
+        background: #F8F9FA;
+        border-radius: 10px;
+    }
+
+    .research-dropdown-content::-webkit-scrollbar-thumb {
+        background: #1A73E8;
+        border-radius: 10px;
+    }
+
     .research-dropdown-content .dropdown-title {
         color: #1A73E8 !important;
         font-size: 1.2rem;
@@ -567,7 +765,7 @@ st.markdown("""
         background: #FFFFFF;
         z-index: 2;
     }
-    
+
     .research-dropdown-content .link-item {
         display: flex;
         align-items: center;
@@ -581,22 +779,22 @@ st.markdown("""
         font-weight: 500 !important;
         cursor: pointer;
     }
-    
+
     .research-dropdown-content .link-item:hover {
         background: #E8F0FE !important;
         transform: translateX(5px);
     }
-    
+
     .research-dropdown-content .link-item .link-icon {
         font-size: 1.2rem;
         flex-shrink: 0;
     }
-    
+
     .research-dropdown-content .link-item .link-text {
         flex: 1;
         color: #202124 !important;
     }
-    
+
     .research-dropdown-content .link-item .link-url {
         color: #5F6368 !important;
         font-size: 0.7rem;
@@ -606,14 +804,84 @@ st.markdown("""
         text-overflow: ellipsis;
         max-width: 100px;
     }
-    
+
     .research-dropdown-content .link-item .link-arrow {
         color: #1A73E8 !important;
         font-size: 0.9rem;
         transition: all 0.3s ease;
     }
-    
-    /* PROFESSOR CARD */
+
+    .research-dropdown-content .link-item:hover .link-arrow {
+        transform: translateX(4px);
+    }
+
+    .research-dropdown-content .divider {
+        border: none;
+        border-top: 1px solid #E8EAED;
+        margin: 4px 0;
+    }
+
+    .ethiopian-stripe {
+        height: 5px;
+        background: linear-gradient(to right, #078930, #FCDD09, #DA121A);
+        border-radius: 3px;
+        margin: 12px 0 0 0;
+    }
+
+    /* STATUS BAR - Google Style */
+    .status-bar {
+        background: #F8F9FA !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 1.2rem 2.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .status-bar .status-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: inline-block;
+        animation: blink 2s infinite;
+    }
+
+    .status-bar .status-dot.online {
+        background: #34A853;
+        box-shadow: 0 0 20px rgba(52,168,83,0.3);
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .status-bar .status-text {
+        color: #202124 !important;
+        font-size: 1.2rem !important;
+        font-weight: 500 !important;
+    }
+
+    .status-bar .status-text .highlight-green {
+        color: #34A853 !important;
+        font-weight: 700 !important;
+    }
+
+    .status-bar .live-badge {
+        background: linear-gradient(135deg, #1A73E8, #4285F4);
+        color: #FFFFFF !important;
+        padding: 6px 18px;
+        border-radius: 25px;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        border: none;
+    }
+
+    /* PROFESSOR CARD - Google Style */
     .professor-card {
         background: #FFFFFF !important;
         border: 1px solid #E8EAED !important;
@@ -624,13 +892,13 @@ st.markdown("""
         position: relative;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    
+
     .professor-card:hover {
         transform: translateY(-4px);
         border-color: #1A73E8 !important;
         box-shadow: 0 8px 32px rgba(0,0,0,0.08);
     }
-    
+
     .professor-card .card-header {
         display: flex;
         justify-content: space-between;
@@ -639,40 +907,52 @@ st.markdown("""
         gap: 10px;
         margin-bottom: 12px;
     }
-    
+
     .professor-card .card-header .name-title h3 {
         font-size: 2rem !important;
         font-weight: 700 !important;
         color: #202124 !important;
         margin: 0;
     }
-    
+
     .professor-card .card-header .name-title .title-badge {
         font-size: 1.1rem !important;
         font-weight: 500 !important;
         color: #5F6368 !important;
     }
-    
-    .professor-card .badge-available { 
-        background: #E6F4EA !important; 
-        color: #34A853 !important; 
+
+    .professor-card .card-header .status-badge {
+        text-align: right;
+    }
+
+    .professor-card .badge-available {
+        background: #E6F4EA !important;
+        color: #34A853 !important;
         border: 1px solid #34A853;
         padding: 6px 18px;
         border-radius: 25px;
         font-size: 0.9rem !important;
         font-weight: 600 !important;
     }
-    
-    .professor-card .badge-full { 
-        background: #FCE8E6 !important; 
-        color: #EA4335 !important; 
+
+    .professor-card .badge-full {
+        background: #FCE8E6 !important;
+        color: #EA4335 !important;
         border: 1px solid #EA4335;
         padding: 6px 18px;
         border-radius: 25px;
         font-size: 0.9rem !important;
         font-weight: 600 !important;
     }
-    
+
+    .professor-card .trust-score {
+        color: #FBBC04 !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        display: block;
+        margin-top: 4px;
+    }
+
     .professor-card .badge-verified {
         display: inline-block;
         padding: 3px 12px;
@@ -684,7 +964,7 @@ st.markdown("""
         color: #1A73E8 !important;
         border: 1px solid #1A73E8;
     }
-    
+
     .professor-card .badge-collab {
         background: #E8F0FE !important;
         color: #1A73E8 !important;
@@ -696,14 +976,14 @@ st.markdown("""
         font-size: 0.85rem !important;
         font-weight: 500 !important;
     }
-    
+
     .professor-card .social-links {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
         margin: 10px 0;
     }
-    
+
     .professor-card .social-link {
         display: inline-flex;
         align-items: center;
@@ -717,140 +997,100 @@ st.markdown("""
         border: 1px solid #E8EAED;
         color: #202124 !important;
     }
-    
+
     .professor-card .social-link:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-    
+
     .professor-card .social-link-orcid {
         background: #E8F0FE !important;
         color: #1A73E8 !important;
         border-color: #1A73E8;
     }
-    
+
     .professor-card .social-link-researchgate {
         background: #E6F4EA !important;
         color: #34A853 !important;
         border-color: #34A853;
     }
-    
+
     .professor-card .social-link-scholar {
         background: #FCE8E6 !important;
         color: #EA4335 !important;
         border-color: #EA4335;
     }
-    
+
+    .professor-card .social-link-scopus {
+        background: #FFF3E0 !important;
+        color: #FB8C00 !important;
+        border-color: #FB8C00;
+    }
+
     .professor-card .info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
         margin-top: 15px;
     }
-    
+
     .professor-card .info-grid .info-item {
         margin-bottom: 6px;
     }
-    
+
     .professor-card .info-grid .info-item .label {
         color: #5F6368 !important;
         font-size: 0.9rem !important;
         font-weight: 500 !important;
     }
-    
+
     .professor-card .info-grid .info-item .value {
         color: #202124 !important;
         font-size: 1.1rem !important;
         font-weight: 500 !important;
     }
-    
-    /* ABOUT SECTION */
-    .about-section {
-        background: #FFFFFF !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        padding: 2.5rem;
-        margin: 2rem 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.04);
-    }
-    
-    .about-section h1 {
-        font-size: 3.5rem !important;
-        text-align: center;
-        background: linear-gradient(135deg, #1A73E8, #4285F4, #34A853) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
-        margin-bottom: 1.5rem;
-        font-weight: 800 !important;
-    }
-    
-    .about-section .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin: 1.5rem 0;
-    }
-    
-    .about-section .stat-card {
+
+    .professor-card .contact-box {
         background: #F8F9FA !important;
         border: 1px solid #E8EAED;
         border-radius: 12px;
         padding: 1.5rem;
-        text-align: center;
-        transition: all 0.3s;
+        margin-top: 15px;
     }
-    
-    .about-section .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border-color: #1A73E8;
+
+    .professor-card .contact-box h4 {
+        color: #202124 !important;
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 10px;
     }
-    
-    .about-section .stat-card .number {
-        font-size: 3rem !important;
-        font-weight: 800 !important;
-        color: #1A73E8 !important;
-        display: block;
-    }
-    
-    .about-section .stat-card .label {
-        font-size: 1.1rem !important;
-        color: #5F6368 !important;
-        font-weight: 500 !important;
-    }
-    
-    .about-section .highlight-box {
-        background: #F8F9FA !important;
-        border-left: 4px solid #1A73E8;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-radius: 8px;
-    }
-    
-    .about-section .quote {
-        font-style: italic;
-        font-size: 1.4rem !important;
-        font-weight: 500 !important;
-        color: #1A73E8 !important;
-        text-align: center;
-        padding: 1.5rem;
-        margin: 2rem 0;
-        border-top: 1px solid #E8EAED;
-        border-bottom: 1px solid #E8EAED;
-    }
-    
-    .about-section .footer-credit {
-        text-align: center;
-        margin-top: 2.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid #E8EAED;
-        color: #5F6368 !important;
+
+    .professor-card .contact-box p {
+        margin: 4px 0;
         font-size: 1rem !important;
-        font-weight: 400 !important;
+        font-weight: 500 !important;
+        color: #202124 !important;
     }
-    
-    /* LETTER BOX */
+
+    .professor-card .contact-box .stat-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .professor-card .contact-box .stat-row span {
+        color: #5F6368 !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+    }
+
+    .professor-card .contact-box .stat-row .highlight-gold {
+        color: #1A73E8 !important;
+        font-weight: 700 !important;
+    }
+
+    /* LETTER BOX - Google Style */
     .letter-box {
         background: #FFFFFF !important;
         border: 2px solid #E8EAED;
@@ -863,7 +1103,7 @@ st.markdown("""
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         font-size: 1.2rem !important;
     }
-    
+
     .letter-box h2 {
         text-align: center;
         font-size: 2.2rem !important;
@@ -871,40 +1111,20 @@ st.markdown("""
         color: #1A73E8 !important;
         -webkit-text-fill-color: #1A73E8 !important;
     }
-    
+
     .letter-box .date {
         text-align: right;
         font-size: 1.1rem !important;
         color: #5F6368 !important;
     }
-    
+
     .letter-box .signature {
         margin-top: 3rem;
         border-top: 1px solid #E8EAED;
         padding-top: 2rem;
     }
-    
-    /* SEARCH SECTION */
-    .search-section {
-        background: #F8F9FA !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    
-    /* LOGIN PAGE */
-    .login-container {
-        max-width: 500px;
-        margin: 3rem auto;
-        padding: 2.5rem;
-        background: #FFFFFF !important;
-        border: 1px solid #E8EAED;
-        border-radius: 16px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    }
-    
-    /* BUTTONS */
+
+    /* BUTTONS - Google Style */
     .stButton > button {
         font-size: 1.2rem !important;
         font-weight: 600 !important;
@@ -918,13 +1138,13 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(26,115,232,0.25) !important;
         min-height: 55px !important;
     }
-    
+
     .stButton > button:hover {
         transform: translateY(-3px) !important;
         box-shadow: 0 4px 16px rgba(26,115,232,0.35) !important;
     }
-    
-    /* TABS */
+
+    /* TABS - Google Style */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         background: #F8F9FA !important;
@@ -932,7 +1152,7 @@ st.markdown("""
         padding: 8px;
         border: 1px solid #E8EAED;
     }
-    
+
     .stTabs [data-baseweb="tab"] {
         border-radius: 12px;
         padding: 14px 30px;
@@ -940,15 +1160,15 @@ st.markdown("""
         font-weight: 500 !important;
         font-size: 1.1rem !important;
     }
-    
+
     .stTabs [aria-selected="true"] {
         background: #FFFFFF !important;
         color: #1A73E8 !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
         border: 1px solid #E8EAED;
     }
-    
-    /* INPUT FIELDS */
+
+    /* INPUT FIELDS - Google Style */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div > input {
@@ -962,14 +1182,75 @@ st.markdown("""
         min-height: 55px !important;
         transition: all 0.3s !important;
     }
-    
+
     .stTextInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {
         border-color: #1A73E8 !important;
         box-shadow: 0 0 0 3px rgba(26,115,232,0.15) !important;
     }
-    
-    /* NOTIFICATIONS */
+
+    .stSelectbox > div > div {
+        background: #FFFFFF !important;
+        border-radius: 12px !important;
+        padding: 4px !important;
+    }
+
+    .stSelectbox > div > div > div {
+        color: #202124 !important;
+        font-size: 1.1rem !important;
+        font-weight: 400 !important;
+    }
+
+    /* SEARCH SECTION - Google Style */
+    .search-section {
+        background: #F8F9FA !important;
+        border: 1px solid #E8EAED;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .search-section label {
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
+        color: #202124 !important;
+    }
+
+    /* Checkbox - Google Style */
+    .stCheckbox label {
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
+        color: #202124 !important;
+    }
+
+    .stCheckbox input[type="checkbox"] {
+        accent-color: #1A73E8 !important;
+    }
+
+    /* Sidebar - Google Style */
+    .css-1d391kg, .css-12w0qpk, [data-testid="stSidebar"] {
+        background: #F8F9FA !important;
+        border-right: 1px solid #E8EAED !important;
+    }
+
+    .css-1d391kg .stMarkdown,
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #202124 !important;
+    }
+
+    .css-1d391kg h1, .css-1d391kg h2, .css-1d391kg h3,
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #1A73E8 !important;
+    }
+
+    /* Caption text */
+    .stCaption {
+        color: #5F6368 !important;
+        font-size: 1rem !important;
+        font-weight: 400 !important;
+    }
+
+    /* Notification styles */
     .notification-badge {
         background: #EA4335 !important;
         color: #FFFFFF !important;
@@ -979,7 +1260,7 @@ st.markdown("""
         font-weight: 700 !important;
         margin-left: 5px;
     }
-    
+
     .notification-item {
         padding: 0.75rem;
         border-radius: 8px;
@@ -987,13 +1268,17 @@ st.markdown("""
         border-left: 4px solid #1A73E8;
         background: #F8F9FA;
     }
-    
+
     .notification-item.unread {
         background: #E8F0FE;
         border-left-color: #EA4335;
     }
-    
-    /* FORUM */
+
+    .notification-item .notification-time {
+        color: #5F6368 !important;
+        font-size: 0.8rem !important;
+    }
+
     .forum-post {
         background: #FFFFFF !important;
         border: 1px solid #E8EAED;
@@ -1001,27 +1286,32 @@ st.markdown("""
         padding: 1.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .forum-post .post-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 0.5rem;
     }
-    
+
     .forum-post .post-title {
         font-size: 1.4rem !important;
         font-weight: 700 !important;
         color: #1A73E8 !important;
     }
-    
+
+    .forum-post .post-meta {
+        color: #5F6368 !important;
+        font-size: 0.9rem !important;
+    }
+
     .forum-post .post-tags {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
         margin-top: 0.5rem;
     }
-    
+
     .forum-post .post-tags .tag {
         background: #E8F0FE !important;
         color: #1A73E8 !important;
@@ -1030,45 +1320,45 @@ st.markdown("""
         font-size: 0.8rem !important;
         font-weight: 500 !important;
     }
-    
-    /* CHAT */
+
+    /* CHAT STYLES */
     .chat-message {
         padding: 0.75rem 1rem;
         border-radius: 12px;
         margin-bottom: 0.5rem;
         max-width: 80%;
     }
-    
+
     .chat-message.user {
         background: #E8F0FE !important;
         border: 1px solid #1A73E8;
         margin-left: auto;
     }
-    
+
     .chat-message.other {
         background: #F8F9FA !important;
         border: 1px solid #E8EAED;
     }
-    
+
     .chat-message .chat-author {
         font-weight: 600 !important;
         font-size: 0.9rem !important;
         color: #1A73E8 !important;
     }
-    
+
     .chat-message .chat-time {
         color: #5F6368 !important;
         font-size: 0.7rem !important;
     }
-    
-    /* BADGES */
+
+    /* BADGE STYLES */
     .badge-display {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         margin: 10px 0;
     }
-    
+
     .badge-item {
         background: #E8F0FE !important;
         border: 1px solid #1A73E8;
@@ -1081,14 +1371,14 @@ st.markdown("""
         align-items: center;
         gap: 6px;
     }
-    
+
     .badge-item.gold {
         background: #FFF8E1 !important;
         border-color: #FFD700;
         color: #F9A825 !important;
     }
-    
-    /* FEEDBACK */
+
+    /* FEEDBACK STYLES */
     .feedback-item {
         background: #FFFFFF !important;
         border: 1px solid #E8EAED;
@@ -1096,19 +1386,19 @@ st.markdown("""
         padding: 1.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .feedback-item .feedback-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 0.5rem;
     }
-    
+
     .feedback-item .feedback-rating {
         color: #FFD700;
         font-size: 1.2rem;
     }
-    
+
     /* DASHBOARD CARDS */
     .dashboard-card {
         background: #FFFFFF !important;
@@ -1118,19 +1408,19 @@ st.markdown("""
         text-align: center;
         transition: all 0.3s;
     }
-    
+
     .dashboard-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         border-color: #1A73E8;
     }
-    
+
     .dashboard-card .card-value {
         font-size: 2.8rem !important;
         font-weight: 800 !important;
         color: #1A73E8 !important;
     }
-    
+
     .dashboard-card .card-label {
         color: #5F6368 !important;
         font-size: 1rem !important;
@@ -1675,6 +1965,40 @@ RESEARCHER_PROFILES = {
 # HELPER FUNCTIONS
 # ===================================================================
 
+def create_forum_post(title, content, author, tags=[]):
+    post = {
+        "id": len(st.session_state.forum_posts) + 1,
+        "title": title,
+        "content": content,
+        "author": author,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "tags": [t.strip() for t in tags.split(",")] if tags else [],
+        "comments": [],
+        "likes": 0,
+        "views": 0
+    }
+    st.session_state.forum_posts.append(post)
+    add_notification(f"📝 New forum post: '{title}' by {author}", "info")
+    return post
+
+def add_comment_to_post(post_id, author, content):
+    for post in st.session_state.forum_posts:
+        if post["id"] == post_id:
+            comment = {
+                "author": author,
+                "content": content,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+            }
+            post["comments"].append(comment)
+            add_notification(f"💬 New comment on '{post['title']}' by {author}", "info")
+            break
+
+def like_post(post_id):
+    for post in st.session_state.forum_posts:
+        if post["id"] == post_id:
+            post["likes"] += 1
+            break
+
 def show_notification_center():
     unread = len([n for n in st.session_state.notifications if not n.get('read', False)])
     col1, col2 = st.columns([3, 1])
@@ -1702,8 +2026,10 @@ def show_notification_center():
 def show_onboarding():
     if st.session_state.onboarding_complete:
         return
-    # Skip Step 1 if profile has name and institution (from registration)
+
     profile = st.session_state.user_profiles.get(st.session_state.current_user, {})
+
+    # If name and institution already exist (from registration), skip Step 1
     if profile.get('name') and profile.get('institution') and st.session_state.onboarding_step == 1:
         st.session_state.onboarding_step = 2
 
@@ -1715,9 +2041,16 @@ def show_onboarding():
         default_name = profile.get('name', '')
         default_institution = profile.get('institution', 'Arba Minch University')
         default_department = profile.get('department', '')
+
         name = st.text_input("Full Name", value=default_name)
-        institution = st.selectbox("Your Institution", ["Arba Minch University", "Addis Ababa University", "Bahir Dar University", "Jimma University", "Hawassa University", "Other"], index=0 if default_institution == "Arba Minch University" else 0)
+        institution = st.selectbox(
+            "Your Institution",
+            ["Arba Minch University", "Addis Ababa University", "Bahir Dar University",
+             "Jimma University", "Hawassa University", "Other"],
+            index=0 if default_institution == "Arba Minch University" else 0
+        )
         department = st.text_input("Department", value=default_department)
+
         if st.button("Next →"):
             st.session_state.user_profiles[st.session_state.current_user].update({
                 "name": name,
@@ -1726,16 +2059,25 @@ def show_onboarding():
             })
             st.session_state.onboarding_step = 2
             st.rerun()
+
     elif step == 2:
         st.markdown("#### Step 2: Your research interests")
-        interests = st.multiselect("Select your research interests", ["Agriculture", "Medicine", "Engineering", "Environmental Science", "Physics", "Mathematics", "Computer Science", "Biology", "Chemistry", "Social Sciences"])
+        interests = st.multiselect(
+            "Select your research interests",
+            ["Agriculture", "Medicine", "Engineering", "Environmental Science",
+             "Physics", "Mathematics", "Computer Science", "Biology", "Chemistry", "Social Sciences"]
+        )
         if st.button("Next →"):
             st.session_state.user_profiles[st.session_state.current_user]["interests"] = interests
             st.session_state.onboarding_step = 3
             st.rerun()
+
     elif step == 3:
         st.markdown("#### Step 3: What are you looking for?")
-        collab_type = st.radio("I am looking to:", ["Find Collaborators", "Join a Project", "Find a Supervisor", "Offer Mentorship"])
+        collab_type = st.radio(
+            "I am looking to:",
+            ["Find Collaborators", "Join a Project", "Find a Supervisor", "Offer Mentorship"]
+        )
         if st.button("🚀 Start Exploring!"):
             st.session_state.user_profiles[st.session_state.current_user]["collab_type"] = collab_type
             st.session_state.onboarding_complete = True
@@ -1859,14 +2201,14 @@ def show_about_page():
         st.rerun()
 
 # ===================================================================
-# FUNCTIONS (LOAD, SEARCH, LETTER, FORUM)
+# LOAD DATA, SEARCH, LETTER GENERATION
 # ===================================================================
 
 @st.cache_data
 def load_data():
     academicians_data = []
     for key, prof in RESEARCHER_PROFILES.items():
-        academicians_data.append({
+        academician = {
             "id": prof["id"],
             "name": prof["name"],
             "title": prof["title"],
@@ -1882,9 +2224,10 @@ def load_data():
             "phone": prof.get("phone", "Not publicly available"),
             "research_interests": prof["research_interests"],
             "available_for_collaboration": prof.get("available_for_collaboration", True),
-            "collaboration_types": prof.get("collaboration_types", []),
+            "collaboration_types": prof.get("collaboration_types", ["Research Supervision", "Joint Research"]),
             "profile_image": prof["profile_image"],
             "research_keywords": prof["research_keywords"],
+            "orcid_id": prof.get("orcid_id", ""),
             "orcid_url": prof.get("orcid_url", ""),
             "researchgate_url": prof.get("researchgate_url", ""),
             "google_scholar_url": prof.get("google_scholar_url", ""),
@@ -1892,9 +2235,12 @@ def load_data():
             "h_index": prof.get("h_index", 0),
             "total_citations": prof.get("total_citations", 0),
             "trust_score": prof.get("trust_score", 0),
+            "last_verified": prof.get("last_verified", "2026-08-06"),
             "verification_badges": prof.get("verification_badges", []),
             "biography": prof.get("biography", "")
-        })
+        }
+        academicians_data.append(academician)
+
     students_data = [
         {"id": "S001", "name": "Abebe Kebede", "research_proposal": "Mathematical modeling of infectious disease spread", "field_of_interest": "Applied Mathematics", "degree_background": "MSc in Mathematics", "email": "abebe.kebede@amu.edu.et", "institution": "Arba Minch University"},
         {"id": "S002", "name": "Tigist Worku", "research_proposal": "Solar energy optimization for rural electrification", "field_of_interest": "Electrical Engineering", "degree_background": "MSc in Electrical Engineering", "email": "tigist.worku@aau.edu.et", "institution": "Addis Ababa University"},
@@ -1932,8 +2278,8 @@ def search_academicians(academicians_df, search_query, search_type):
         )
         return academicians_df[mask]
 
-def generate_request_letter(student_name, student_institution, professor_name, professor_title, 
-                           professor_institution, research_topic, request_type, 
+def generate_request_letter(student_name, student_institution, professor_name, professor_title,
+                           professor_institution, research_topic, request_type,
                            student_email, student_phone):
     date = datetime.now().strftime("%B %d, %Y")
     if request_type == "Research Supervision":
@@ -1944,41 +2290,11 @@ def generate_request_letter(student_name, student_institution, professor_name, p
         body = f"I am writing to propose a collaboration between {student_institution} and {professor_institution}. My research involves: {research_topic}"
     return {
         'date': date,
-        'from_address': f"{student_name}\n{student_institution}\n{student_email}",
-        'to_address': f"{professor_name}\n{professor_title}\n{professor_institution}",
+        'from_address': f"{student_name}\\n{student_institution}\\n{student_email}",
+        'to_address': f"{professor_name}\\n{professor_title}\\n{professor_institution}",
         'subject': subject,
         'body': body
     }
-
-def create_forum_post(title, content, author, tags=""):
-    post = {
-        "id": len(st.session_state.forum_posts) + 1,
-        "title": title,
-        "content": content,
-        "author": author,
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "tags": [t.strip() for t in tags.split(",")] if tags else [],
-        "comments": [],
-        "likes": 0,
-        "views": 0
-    }
-    st.session_state.forum_posts.append(post)
-    add_notification(f"📝 New forum post: '{title}' by {author}", "info")
-    return post
-
-def add_comment_to_post(post_id, author, content):
-    for post in st.session_state.forum_posts:
-        if post["id"] == post_id:
-            comment = {"author": author, "content": content, "date": datetime.now().strftime("%Y-%m-%d %H:%M")}
-            post["comments"].append(comment)
-            add_notification(f"💬 New comment on '{post['title']}' by {author}", "info")
-            break
-
-def like_post(post_id):
-    for post in st.session_state.forum_posts:
-        if post["id"] == post_id:
-            post["likes"] += 1
-            break
 
 # ===================================================================
 # LOGIN PAGE
@@ -2040,10 +2356,11 @@ def show_login_page():
             with st.form("register_form"):
                 # FULL NAME FIELD - ADDED HERE
                 full_name = st.text_input("👤 Full Name *", placeholder="e.g., Berhanu Mekonen")
-                
+
                 new_username = st.text_input("📧 Email Address *", placeholder="your.name@amu.edu.et", help="Must end with @amu.edu.et")
                 new_password = st.text_input("🔒 Create Password *", type="password", placeholder="Minimum 6 characters", help="Password must be at least 6 characters long")
                 confirm_password = st.text_input("✅ Confirm Password *", type="password", placeholder="Re-enter your password")
+
                 st.markdown("""
                 <div style="color:#5F6368; font-size:0.85rem; margin:0.5rem 0;">
                     <span>📋 Username must be your AMU email address (e.g., <b>your.name@amu.edu.et</b>)</span>
@@ -2074,20 +2391,17 @@ def main():
         show_login_page()
         return
 
-    # Logged in: show onboarding if not complete
-    if not st.session_state.onboarding_complete and st.session_state.current_user:
-        show_onboarding()
-        return
-
     academicians_df, students_df = load_data()
     if 'requests' not in st.session_state:
         st.session_state.requests = []
     if 'selected_professor' not in st.session_state:
         st.session_state.selected_professor = None
+    if 'show_letter' not in st.session_state:
+        st.session_state.show_letter = False
+    if 'last_request' not in st.session_state:
+        st.session_state.last_request = None
     if 'show_about' not in st.session_state:
         st.session_state.show_about = False
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "🏠 Home"
 
     current_user = st.session_state.current_user
     profile = st.session_state.user_profiles.get(current_user, {})
@@ -2159,10 +2473,12 @@ def main():
                 <div class="logo-icon">🌿🇪🇹🎉</div>
                 <div class="logo-text">
                     <h1>Ethiopian Research Collaboration Portal</h1>
-                    <div class="subtitle">Connecting <span class="highlight">Ethiopian</span> Researchers & Academic Professionals</div>
+                    <div class="subtitle">
+                        Connecting <span class="highlight">Ethiopian</span> Researchers & Academic Professionals
+                    </div>
                     <div class="developer-credit">
-                        🌿🇪🇹🎉 <span class="highlight-name">Berhanu Mekonen, PhD</span> · 
-                        <span class="highlight-institution">Arba Minch University</span> · 
+                        🌿🇪🇹🎉 <span class="highlight-name">Berhanu Mekonen, PhD</span> ·
+                        <span class="highlight-institution">Arba Minch University</span> ·
                         August 14, 2026
                     </div>
                 </div>
@@ -2173,21 +2489,53 @@ def main():
                     <span class="user-name">{user_display_name}</span>
                 </div>
                 <div class="header-stats">
-                    <div class="stat-item"><span class="number">{len(academicians_df)}</span><span class="label">Verified</span></div>
-                    <div class="stat-item"><span class="number">{available_profs}</span><span class="label">Available</span></div>
-                    <div class="stat-item"><span class="number">{len(students_df)}</span><span class="label">Students</span></div>
-                    <div class="stat-item"><span class="number">{total_publications}</span><span class="label">Publications</span></div>
-                    <div class="stat-item"><span class="number">{total_completed_phds}</span><span class="label">PhDs</span></div>
+                    <div class="stat-item">
+                        <span class="number">{len(academicians_df)}</span>
+                        <span class="label">Verified Professionals</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number">{available_profs}</span>
+                        <span class="label">Available</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number">{len(students_df)}</span>
+                        <span class="label">Student Researchers</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number">{total_publications}</span>
+                        <span class="label">Publications</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="number">{total_completed_phds}</span>
+                        <span class="label">PhDs Completed</span>
+                    </div>
                 </div>
                 <div class="research-dropdown">
-                    <button class="research-btn">🌍 Researches <span class="arrow-down">▼</span></button>
+                    <button class="research-btn">
+                        🌍 Researches in the world 🎉<span class="arrow-down">▼</span>
+                    </button>
                     <div class="research-dropdown-content">
                         <div class="dropdown-title">📚 Research Resources</div>
-                        <a href="https://scholar.google.com/" target="_blank" class="link-item"><span class="link-icon">🔬</span><span class="link-text">Google Scholar</span><span class="link-url">scholar.google.com</span><span class="link-arrow">→</span></a>
+                        <a href="https://scholar.google.com/" target="_blank" class="link-item">
+                            <span class="link-icon">🔬</span>
+                            <span class="link-text">Google Scholar</span>
+                            <span class="link-url">scholar.google.com</span>
+                            <span class="link-arrow">→</span>
+                        </a>
                         <hr class="divider">
-                        <a href="https://www.scimagojr.com/" target="_blank" class="link-item"><span class="link-icon">📊</span><span class="link-text">Scopus Indexed?</span><span class="link-url">scimagojr.com</span><span class="link-arrow">→</span></a>
+                        <a href="https://www.scimagojr.com/" target="_blank" class="link-item">
+                            <span class="link-icon">📊</span>
+                            <span class="link-text">Check Scopus Indexed or not</span>
+                            <span class="link-url">scimagojr.com</span>
+                            <span class="link-arrow">→</span>
+                        </a>
                         <hr class="divider">
-                        <a href="https://mjl.clarivate.com/home" target="_blank" class="link-item"><span class="link-icon">📋</span><span class="link-text">Web of Science</span><span class="link-url">mjl.clarivate.com</span><span class="link-arrow">→</span></a>
+                        <a href="https://mjl.clarivate.com/home" target="_blank" class="link-item">
+                            <span class="link-icon">📋</span>
+                            <span class="link-text">Check Web of Science Indexed or not</span>
+                            <span class="link-url">mjl.clarivate.com</span>
+                            <span class="link-arrow">→</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -2198,12 +2546,20 @@ def main():
 
     st.markdown(f"""
     <div class="status-bar">
-        <div><span class="status-dot online"></span><span class="status-text">System Online · <span class="highlight-green">{len(academicians_df)}</span> verified professionals ready</span></div>
-        <div><span class="live-badge">LIVE · {datetime.now().strftime('%H:%M:%S')}</span></div>
+        <div>
+            <span class="status-dot online"></span>
+            <span class="status-text">System Online · <span class="highlight-green">{len(academicians_df)}</span> verified professionals ready for collaboration</span>
+        </div>
+        <div>
+            <span class="live-badge">LIVE · {datetime.now().strftime('%H:%M:%S')}</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # PAGE ROUTING
+    # ===================================================================
+    # PAGE ROUTING (ORIGINAL + NEW)
+    # ===================================================================
+
     if current_page == "🏠 Home" or current_page == "🔍 Find Researchers":
         if current_page == "🏠 Home":
             show_researcher_of_month()
@@ -2232,7 +2588,9 @@ def main():
             with st.expander(f"{prof['profile_image']} {prof['name']} - {prof['title']}", expanded=False):
                 col1, col2 = st.columns([2, 1])
                 with col1:
-                    verification_html = ''.join(f'<span class="badge-verified">{b}</span>' for b in prof.get('verification_badges', []))
+                    verification_html = ""
+                    for badge in prof.get('verification_badges', []):
+                        verification_html += f'<span class="badge-verified">{badge}</span>'
                     social_links_html = ""
                     if prof.get('orcid_url'):
                         social_links_html += f'<a href="{prof["orcid_url"]}" target="_blank" class="social-link social-link-orcid">ORCID</a>'
@@ -2240,14 +2598,34 @@ def main():
                         social_links_html += f'<a href="{prof["researchgate_url"]}" target="_blank" class="social-link social-link-researchgate">ResearchGate</a>'
                     if prof.get('google_scholar_url'):
                         social_links_html += f'<a href="{prof["google_scholar_url"]}" target="_blank" class="social-link social-link-scholar">Google Scholar</a>'
+                    if prof.get('scopus_url'):
+                        social_links_html += f'<a href="{prof["scopus_url"]}" target="_blank" class="social-link social-link-scopus">Scopus</a>'
                     if social_links_html:
                         social_links_html = f'<div class="social-links">{social_links_html}</div>'
                     st.markdown(f"""
                     <div class="professor-card">
-                        <div class="card-header"><div><h3>{prof['profile_image']} {prof['name']}</h3><span class="title-badge">{prof['title']}</span><div>{verification_html}</div>{social_links_html}</div>
-                        <div><span class="{status_class}">{status_text}</span><br><span style="color:#FBBC04;">⭐ Trust Score: {prof['trust_score']}%</span></div></div>
-                        <div><p><b>🏛️ Institution:</b> {prof['institution']}</p><p><b>📚 Department:</b> {prof['department']}</p><p><b>🎓 Education:</b> {prof['education']}</p><p><b>🔬 Research Interests:</b> {prof['research_interests']}</p>
-                        <div>{''.join(f'<span class="badge-collab">{t}</span>' for t in prof.get('collaboration_types', []))}</div></div>
+                        <div class="card-header">
+                            <div>
+                                <h3>{prof['profile_image']} {prof['name']}</h3>
+                                <span class="title-badge">{prof['title']}</span>
+                                <div style="margin-top:8px;">{verification_html}</div>
+                                {social_links_html}
+                            </div>
+                            <div>
+                                <span class="{status_class}">{status_text}</span>
+                                <br>
+                                <span style="color:#FBBC04;">⭐ Trust Score: {prof['trust_score']}%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p><b>🏛️ Institution:</b> {prof['institution']}</p>
+                            <p><b>📚 Department:</b> {prof['department']}</p>
+                            <p><b>🎓 Education:</b> {prof['education']}</p>
+                            <p><b>🔬 Research Interests:</b> {prof['research_interests']}</p>
+                            <div>
+                                {''.join(f'<span class="badge-collab">{t}</span>' for t in prof.get('collaboration_types', []))}
+                            </div>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
                     if prof.get('publications'):
@@ -2257,10 +2635,12 @@ def main():
                 with col2:
                     st.markdown(f"""
                     <div style="background:#F8F9FA;border:1px solid #E8EAED;border-radius:12px;padding:1.5rem;">
-                        <h4>📬 Contact</h4><p>✉️ {prof['email']}</p><p>📞 {prof['phone']}</p>
-                        <p>📊 Completed PhDs: <span style="color:#1A73E8;font-weight:700;">{prof['completed_phds']}</span></p>
-                        <p>📋 Available Slots: <span style="color:#1A73E8;font-weight:700;">{slots}</span></p>
-                        <p>📈 h-index: <span style="color:#1A73E8;font-weight:700;">{prof['h_index']}</span> | 📑 Citations: <span style="color:#1A73E8;font-weight:700;">{prof['total_citations']}</span></p>
+                        <h4 style="color:#202124;">📬 Contact</h4>
+                        <p style="color:#202124;">✉️ {prof['email']}</p>
+                        <p style="color:#202124;">📞 {prof['phone']}</p>
+                        <p style="color:#202124;">📊 Completed PhDs: <span style="color:#1A73E8;font-weight:700;">{prof['completed_phds']}</span></p>
+                        <p style="color:#202124;">📋 Available Slots: <span style="color:#1A73E8;font-weight:700;">{slots}</span></p>
+                        <p style="color:#202124;">📈 h-index: <span style="color:#1A73E8;font-weight:700;">{prof['h_index']}</span> | 📑 Citations: <span style="color:#1A73E8;font-weight:700;">{prof['total_citations']}</span></p>
                     </div>
                     """, unsafe_allow_html=True)
                     if slots > 0:
@@ -2275,7 +2655,12 @@ def main():
         st.markdown("### Request Collaboration")
         if st.session_state.selected_professor:
             prof = st.session_state.selected_professor
-            st.markdown(f"<div style='background:#E8F0FE;border:1px solid #1A73E8;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border-left:5px solid #1A73E8;'><h4>Requesting: {prof['name']} - {prof['title']}</h4><p style='color:#5F6368;'>🏛️ {prof['institution']} • 📚 {prof['department']}</p></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="background:#E8F0FE;border:1px solid #1A73E8;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border-left:5px solid #1A73E8;">
+                <h4 style="color:#202124;">Requesting: {prof['name']} - {prof['title']}</h4>
+                <p style="color:#5F6368;">🏛️ {prof['institution']} • 📚 {prof['department']}</p>
+            </div>
+            """, unsafe_allow_html=True)
             with st.form("collaboration_request"):
                 request_type = st.selectbox("Type of Collaboration", prof.get('collaboration_types', ['Research Supervision', 'Joint Research', 'Consultancy']))
                 col1, col2 = st.columns(2)
@@ -2286,35 +2671,66 @@ def main():
                     requester_institution = st.text_input("Institution *", value="Arba Minch University")
                     requester_phone = st.text_input("Phone Number", value="")
                 research_topic = st.text_area("Research Topic/Proposal *", height=150)
-                if st.form_submit_button("Submit Request", use_container_width=True):
-                    if requester_name and requester_email and requester_institution and research_topic:
-                        letter_data = generate_request_letter(requester_name, requester_institution, prof['name'], prof['title'], prof['institution'], research_topic, request_type, requester_email, requester_phone)
-                        st.session_state.requests.append({
+                submitted = st.form_submit_button("Submit Request", use_container_width=True)
+                if submitted:
+                    if not requester_name or not requester_email or not requester_institution or not research_topic:
+                        st.error("Please fill in all required fields")
+                    else:
+                        letter_data = generate_request_letter(
+                            requester_name, requester_institution,
+                            prof['name'], prof['title'], prof['institution'],
+                            research_topic, request_type,
+                            requester_email, requester_phone
+                        )
+                        request = {
                             'id': f"REQ{len(st.session_state.requests)+1:04d}",
                             'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
                             'requester': requester_name,
+                            'requester_institution': requester_institution,
                             'professor': prof['name'],
+                            'professor_institution': prof['institution'],
                             'request_type': request_type,
                             'research_topic': research_topic,
                             'status': 'Pending',
                             'letter': letter_data
-                        })
+                        }
+                        st.session_state.requests.append(request)
+                        st.session_state.last_request = request
+                        st.session_state.show_letter = True
                         add_notification(f"📩 Collaboration request submitted to {prof['name']}", "success")
-                        add_points(st.session_state.current_user, 15, "Collaboration request")
-                        st.success(f"✅ Request submitted to {prof['name']}!")
+                        st.success(f"✅ Request submitted successfully to {prof['name']}!")
                         st.balloons()
-                        st.markdown(f"<div class='letter-box'><h2>REQUEST FOR {request_type.upper()}</h2><p class='date'><b>Date:</b> {letter_data['date']}</p><p><b>From:</b><br>{letter_data['from_address']}</p><p><b>To:</b><br>{letter_data['to_address']}</p><p><b>Subject:</b> {letter_data['subject']}</p><p>Dear {prof['name'].split()[0]},</p><p>{letter_data['body']}</p><div class='signature'><p>Yours sincerely,</p><p><b>{requester_name}</b><br>{requester_institution}</p></div></div>", unsafe_allow_html=True)
-                    else:
-                        st.error("Please fill in all required fields.")
+                        st.markdown(f"""
+                        <div class="letter-box">
+                            <h2>REQUEST FOR {request_type.upper()}</h2>
+                            <p class="date"><b>Date:</b> {letter_data['date']}</p>
+                            <p><b>From:</b><br>{letter_data['from_address']}</p>
+                            <p><b>To:</b><br>{letter_data['to_address']}</p>
+                            <p><b>Subject:</b> {letter_data['subject']}</p>
+                            <p>Dear {prof['name'].split()[0]},</p>
+                            <p>{letter_data['body']}</p>
+                            <div class="signature">
+                                <p>Yours sincerely,</p>
+                                <p><b>{requester_name}</b><br>{requester_institution}</p>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
         else:
-            st.info("👈 Go to 'Find Professionals' and click 'Request Collaboration'")
+            st.info("👈 Please go to 'Find Professionals' and click 'Request Collaboration'")
         st.markdown("### My Collaboration Requests")
         if not st.session_state.requests:
             st.info("You haven't submitted any collaboration requests yet.")
         else:
             for req in reversed(st.session_state.requests):
                 with st.expander(f"📩 {req['request_type']} - {req['professor']} ({req['status']})"):
-                    st.markdown(f"<div style='background:#F8F9FA;padding:1.5rem;border-radius:12px;border:1px solid #E8EAED;'><p><b>Topic:</b> {req['research_topic'][:150]}...</p><p><b>Submitted:</b> {req['date']}</p><p><b>Status:</b> <span style='color:#1A73E8;font-weight:600;'>{req['status']}</span></p></div>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style="background:#F8F9FA;padding:1.5rem;border-radius:12px;border:1px solid #E8EAED;">
+                        <p><b>Institution:</b> {req['professor_institution']}</p>
+                        <p><b>Topic:</b> {req['research_topic'][:150]}...</p>
+                        <p><b>Submitted:</b> {req['date']}</p>
+                        <p><b>Status:</b> <span style="color:#1A73E8;font-weight:600;">{req['status']}</span></p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
     elif current_page == "💬 Forum":
         st.markdown("### 💬 Research Discussion Forum")
@@ -2322,26 +2738,33 @@ def main():
         with st.expander("➕ Create New Post", expanded=False):
             with st.form("new_post"):
                 title = st.text_input("Title", placeholder="Enter your post title...")
-                content = st.text_area("Content", height=150, placeholder="Share your research ideas...")
-                tags = st.text_input("Tags (comma separated)", placeholder="e.g., optimization, machine learning")
-                if st.form_submit_button("📝 Publish Post", use_container_width=True):
-                    if title and content:
-                        create_forum_post(title, content, user_display_name, tags)
-                        add_points(st.session_state.current_user, 10, "Forum post")
-                        if len(st.session_state.forum_posts) == 1:
-                            add_badge(st.session_state.current_user, "💬 First Post")
-                        st.success("✅ Post published!")
-                        st.rerun()
-                    else:
-                        st.error("Please enter both title and content.")
+                content = st.text_area("Content", height=150, placeholder="Share your research ideas, questions, or insights...")
+                tags = st.text_input("Tags (comma separated)", placeholder="e.g., optimization, machine learning, epidemiology")
+                submitted = st.form_submit_button("📝 Publish Post", use_container_width=True)
+                if submitted and title and content:
+                    create_forum_post(title, content, user_display_name, tags)
+                    if len(st.session_state.forum_posts) == 1:
+                        add_badge(st.session_state.current_user, "💬 First Post")
+                    st.success("✅ Post published successfully!")
+                    st.rerun()
+                elif submitted:
+                    st.error("❌ Please enter both title and content.")
         if st.session_state.forum_posts:
+            st.markdown(f"### 📝 Recent Posts ({len(st.session_state.forum_posts)} total)")
             for post in reversed(st.session_state.forum_posts):
                 with st.expander(f"📌 {post['title']} - by {post['author']}", expanded=False):
                     st.markdown(f"""
                     <div class="forum-post">
-                        <div class="post-header"><span class="post-title">{post['title']}</span><span class="post-meta">🕐 {post['date']} · ❤️ {post['likes']} likes</span></div>
-                        <div>{post['content']}</div>
-                        <div class="post-tags">{''.join(f'<span class="tag">#{tag}</span>' for tag in post['tags'])}</div>
+                        <div class="post-header">
+                            <span class="post-title">{post['title']}</span>
+                            <span class="post-meta">🕐 {post['date']} · ❤️ {post['likes']} likes</span>
+                        </div>
+                        <div style="padding:0.5rem 0;border-top:1px solid #E8EAED;border-bottom:1px solid #E8EAED;">
+                            {post['content']}
+                        </div>
+                        <div class="post-tags">
+                            {''.join(f'<span class="tag">#{tag}</span>' for tag in post['tags'])}
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
                     col1, col2 = st.columns([1, 5])
@@ -2349,20 +2772,27 @@ def main():
                         if st.button(f"❤️ {post['likes']}", key=f"like_{post['id']}"):
                             like_post(post['id'])
                             st.rerun()
+                    st.markdown("---")
                     st.markdown("#### 💬 Comments")
                     if post['comments']:
                         for comment in post['comments']:
-                            st.markdown(f"<div style='background:#F8F9FA;padding:0.75rem;border-radius:8px;margin-bottom:0.5rem;border-left:3px solid #1A73E8;'><strong>{comment['author']}</strong> <span style='color:#5F6368;font-size:0.8rem;'>({comment['date']})</span><p style='margin:0.2rem 0 0 0;'>{comment['content']}</p></div>", unsafe_allow_html=True)
+                            st.markdown(f"""
+                            <div style="background:#F8F9FA;padding:0.75rem;border-radius:8px;margin-bottom:0.5rem;border-left:3px solid #1A73E8;">
+                                <strong>{comment['author']}</strong> <span style="color:#5F6368;font-size:0.8rem;">({comment['date']})</span>
+                                <p style="margin:0.2rem 0 0 0;">{comment['content']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.caption("No comments yet. Be the first to comment!")
                     with st.form(f"comment_form_{post['id']}"):
                         comment_content = st.text_area("Add a comment", key=f"comment_{post['id']}", placeholder="Share your thoughts...")
-                        if st.form_submit_button("💬 Submit Comment", use_container_width=True):
-                            if comment_content:
-                                add_comment_to_post(post['id'], user_display_name, comment_content)
-                                add_points(st.session_state.current_user, 5, "Comment")
-                                st.success("Comment added!")
-                                st.rerun()
-                            else:
-                                st.error("Please enter a comment.")
+                        submitted = st.form_submit_button("💬 Submit Comment", use_container_width=True)
+                        if submitted and comment_content:
+                            add_comment_to_post(post['id'], user_display_name, comment_content)
+                            st.success("Comment added!")
+                            st.rerun()
+                        elif submitted:
+                            st.error("❌ Please enter a comment.")
         else:
             st.info("No posts yet. Start a discussion! 🚀")
 
@@ -2397,22 +2827,20 @@ def main():
                 fig4 = px.bar(df_pub, x='name', y='trust_score', title='Trust Score by Researcher', color='trust_score', color_continuous_scale='Oranges', text='trust_score')
                 fig4.update_layout(height=400, showlegend=False)
                 st.plotly_chart(fig4, use_container_width=True)
-            st.markdown("#### Summary Statistics")
-            c1,c2,c3,c4 = st.columns(4)
+            st.markdown("#### 📊 Summary Statistics")
+            c1, c2, c3, c4 = st.columns(4)
             c1.metric("Total Publications", df_pub['publications'].sum())
             c2.metric("Total Citations", df_pub['citations'].sum())
-            c3.metric("Avg h-index", f"{df_pub['h_index'].mean():.1f}")
-            c4.metric("Avg Trust Score", f"{df_pub['trust_score'].mean():.1f}%")
+            c3.metric("Average h-index", f"{df_pub['h_index'].mean():.1f}")
+            c4.metric("Average Trust Score", f"{df_pub['trust_score'].mean():.1f}%")
 
+    # --- NEW PAGES ---
     elif current_page == "💬 Chat":
         show_chat()
-
     elif current_page == "📅 Events":
         show_event_calendar()
-
     elif current_page == "💰 Grants":
         show_grants()
-
     elif current_page == "👥 Mentorship":
         st.markdown("### 👥 Mentorship Program")
         with st.expander("➕ Become a Mentor", expanded=False):
@@ -2433,7 +2861,6 @@ def main():
         if st.session_state.mentorships:
             for m in st.session_state.mentorships:
                 st.markdown(f"<div style='background:#F8F9FA;padding:1rem;border-radius:12px;margin-bottom:0.5rem;'><strong>{m['mentor']}</strong> · Expertise: {m['expertise']} · {m['availability']}</div>", unsafe_allow_html=True)
-
     elif current_page == "📄 Papers":
         st.markdown("### 📄 Research Paper Sharing")
         with st.expander("📤 Upload a Paper", expanded=False):
@@ -2454,30 +2881,25 @@ def main():
                     st.rerun()
         for p in reversed(st.session_state.papers):
             st.markdown(f"<div style='background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;padding:1rem;margin-bottom:0.5rem;'><strong>{p['title']}</strong><br>Authors: {p['authors']}<br>{p['abstract'][:200]}...<br><span style='color:#5F6368;'>Uploaded by {p['uploaded_by']} on {p['date']}</span></div>", unsafe_allow_html=True)
-
-    elif current_page == "📝 Feedback" or "📨 Notifications" in current_page:
-        if "📨 Notifications" in current_page:
-            show_notification_center()
-        else:
-            st.markdown("### 📝 Feedback & Suggestions")
-            with st.form("feedback_form"):
-                rating = st.slider("How would you rate the platform?", 1, 5, 5)
-                comment = st.text_area("Your feedback (optional)", placeholder="Tell us what you think...")
-                if st.form_submit_button("Submit Feedback"):
-                    st.session_state.feedback.append({
-                        "user": st.session_state.current_user,
-                        "rating": rating,
-                        "comment": comment,
-                        "date": datetime.now().strftime("%Y-%m-%d %H:%M")
-                    })
-                    add_points(st.session_state.current_user, 5, "Feedback submitted")
-                    st.success("Thank you for your feedback!")
-                    st.rerun()
-            st.markdown("### Recent Feedback")
-            for fb in reversed(st.session_state.feedback[-5:]):
-                stars = "⭐" * fb['rating']
-                st.markdown(f"<div class='feedback-item'><div class='feedback-header'><strong>{fb['user']}</strong><span class='feedback-rating'>{stars}</span></div><p>{fb['comment']}</p><span style='color:#5F6368;font-size:0.8rem;'>{fb['date']}</span></div>", unsafe_allow_html=True)
-
+    elif current_page == "📝 Feedback":
+        st.markdown("### 📝 Feedback & Suggestions")
+        with st.form("feedback_form"):
+            rating = st.slider("How would you rate the platform?", 1, 5, 5)
+            comment = st.text_area("Your feedback (optional)", placeholder="Tell us what you think...")
+            if st.form_submit_button("Submit Feedback"):
+                st.session_state.feedback.append({
+                    "user": st.session_state.current_user,
+                    "rating": rating,
+                    "comment": comment,
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+                })
+                add_points(st.session_state.current_user, 5, "Feedback submitted")
+                st.success("Thank you for your feedback!")
+                st.rerun()
+        st.markdown("### Recent Feedback")
+        for fb in reversed(st.session_state.feedback[-5:]):
+            stars = "⭐" * fb['rating']
+            st.markdown(f"<div class='feedback-item'><div class='feedback-header'><strong>{fb['user']}</strong><span class='feedback-rating'>{stars}</span></div><p>{fb['comment']}</p><span style='color:#5F6368;font-size:0.8rem;'>{fb['date']}</span></div>", unsafe_allow_html=True)
     elif current_page == "👤 Profile":
         st.markdown("### 👤 My Profile")
         profile = st.session_state.user_profiles.get(st.session_state.current_user, {})
@@ -2494,6 +2916,8 @@ def main():
             <div><strong>Badges:</strong> {', '.join(st.session_state.user_badges.get(st.session_state.current_user, [])) or 'None yet'}</div>
         </div>
         """, unsafe_allow_html=True)
+    elif "📨 Notifications" in current_page:
+        show_notification_center()
 
 if __name__ == "__main__":
     main()

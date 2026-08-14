@@ -656,7 +656,7 @@ st.markdown("""
         margin-top: 4px;
     }
 
-    /* ===== RESEARCH DROPDOWN - FIXED ===== */
+    /* ===== RESEARCH DROPDOWN - OPENS UPWARD AND TO THE RIGHT ===== */
     .research-dropdown {
         position: relative;
         display: inline-block;
@@ -703,12 +703,12 @@ st.markdown("""
         transform: rotate(180deg);
     }
 
-    /* FIXED: Opens downward and to the right */
+    /* FIXED: Opens upward (above button) and to the right */
     .research-dropdown-content {
         display: none;
         position: absolute;
         left: 0;                 /* Aligns to left edge → opens to the right */
-        top: 100%;               /* Opens downward */
+        bottom: 100%;            /* Opens upward (above the button) */
         background: #FFFFFF !important;
         min-width: 400px;
         max-width: 90vw;         /* Prevents overflow on small screens */
@@ -719,7 +719,7 @@ st.markdown("""
         padding: 1.2rem;
         box-shadow: 0 8px 32px rgba(0,0,0,0.12);
         z-index: 1000;
-        margin-top: 10px;        /* Space below button */
+        margin-bottom: 10px;     /* Space between dropdown and button */
     }
 
     .research-dropdown:hover .research-dropdown-content {

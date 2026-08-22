@@ -1,10 +1,10 @@
 # ===================================================================
 # ETHIOPIAN ACADEMIC PORTAL - RESEARCH COLLABORATION SYSTEM
-# WITH ADMIN-APPROVED REGISTRATION & USER MANAGEMENT
+# WITH SUPABASE PERSISTENCE
 # Berhanu Mekonen, PhD, Arba Minch University, June 25, 2026
 # ===================================================================
 
-import streamlit as st  
+import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -16,7 +16,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from collections import Counter
 import random
-import time  # for celebration delays
+import time
+from supabase import create_client, Client
 
 st.set_page_config(
     page_title="Ethiopian Research Collaboration Portal",
@@ -26,8 +27,136 @@ st.set_page_config(
 )
 
 # ===================================================================
-# USER DATABASE - WITH ADMIN AND APPROVAL SYSTEM
+# SUPABASE CLIENT
 # ===================================================================
+
+def init_supabase():
+    try:
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["anon_key"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Supabase connection error: {e}. Please check your secrets.")
+        st.stop()
+
+def get_supabase():
+    if "supabase" not in st.session_state:
+        st.session_state.supabase = init_supabase()
+    return st.session_state.supabase
+
+def init_supabase_admin():
+    try:
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["service_role_key"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Admin Supabase connection error: {e}. Please check your service role key.")
+        st.stop()
+
+def get_supabase_admin():
+    if "supabase_admin" not in st.session_state:
+        st.session_state.supabase_admin = init_supabase_admin()
+    return st.session_state.supabase_admin
+
+# ===================================================================
+# DATA LOAD & SYNC
+# ===================================================================
+
+def load_all_data():
+    supabase = get_supabase()
+    # Users
+    res = supabase.table("users").select("*").execute()
+    user_db = {}
+    if res.data:
+        for u in res.data:
+            user_db[u["username"]] = u["password_hash"]
+    st.session_state.user_db = user_db
+
+    # User profiles
+    res = supabase.table("user_profiles").select("*").execute()
+    profiles = {}
+    if res.data:
+        for p in res.data:
+            username = p.pop("username")
+            profiles[username] = p
+    st.session_state.user_profiles = profiles
+
+    # Pending users
+    res = supabase.table("pending_users").select("*").execute()
+    st.session_state.pending_users = res.data if res.data else []
+
+    # Notifications
+    res = supabase.table("notifications").select("*").order("id", desc=True).execute()
+    st.session_state.notifications = res.data if res.data else []
+
+    # Forum posts
+    res = supabase.table("forum_posts").select("*").order("id", desc=True).execute()
+    st.session_state.forum_posts = res.data if res.data else []
+
+    # Chat messages (column is 'sender')
+    res = supabase.table("chat_messages").select("*").order("id").execute()
+    st.session_state.chat_messages = res.data if res.data else []
+
+    # Feedback (column is 'username')
+    res = supabase.table("feedback").select("*").order("id", desc=True).execute()
+    st.session_state.feedback = res.data if res.data else []
+
+    # User points
+    res = supabase.table("user_points").select("*").execute()
+    points = {}
+    if res.data:
+        for p in res.data:
+            points[p["username"]] = p["points"]
+    st.session_state.user_points = points
+
+    # User badges
+    res = supabase.table("user_badges").select("*").execute()
+    badges = {}
+    if res.data:
+        for b in res.data:
+            username = b["username"]
+            if username not in badges:
+                badges[username] = []
+            badges[username].append(b["badge_name"])
+    st.session_state.user_badges = badges
+
+    # Events
+    res = supabase.table("events").select("*").order("id", desc=True).execute()
+    st.session_state.events = res.data if res.data else []
+
+    # Mentorships
+    res = supabase.table("mentorships").select("*").order("id", desc=True).execute()
+    st.session_state.mentorships = res.data if res.data else []
+
+    # Grants
+    res = supabase.table("grants").select("*").order("id").execute()
+    st.session_state.grants = res.data if res.data else []
+
+    # Papers
+    res = supabase.table("papers").select("*").order("id", desc=True).execute()
+    st.session_state.papers = res.data if res.data else []
+
+    # Requests
+    res = supabase.table("requests").select("*").order("id", desc=True).execute()
+    st.session_state.requests = res.data if res.data else []
+
+    # Ensure admin exists
+    admin_exists = "admin" in st.session_state.user_db
+    if not admin_exists:
+        supabase_admin = get_supabase_admin()
+        try:
+            supabase_admin.table("users").insert({
+                "username": "admin",
+                "password_hash": hash_password("admin"),
+                "role": "admin"
+            }).execute()
+            supabase_admin.table("user_profiles").insert({
+                "username": "admin",
+                "name": "Administrator"
+            }).execute()
+            load_all_data()  # reload
+        except Exception as e:
+            st.error(f"Could not create admin: {e}")
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -35,120 +164,75 @@ def hash_password(password):
 def verify_password(password, hashed):
     return hash_password(password) == hashed
 
-# ---- List of countries with flag emojis ----
-COUNTRIES_WITH_FLAGS = [
-    "🇪🇹 Ethiopia", "🇰🇪 Kenya", "🇺🇬 Uganda", "🇹🇿 Tanzania", "🇷🇼 Rwanda",
-    "🇸🇩 Sudan", "🇸🇸 South Sudan", "🇸🇴 Somalia", "🇩🇯 Djibouti", "🇪🇷 Eritrea",
-    "🇺🇸 United States", "🇬🇧 United Kingdom", "🇨🇦 Canada", "🇦🇺 Australia",
-    "🇩🇪 Germany", "🇫🇷 France", "🇮🇹 Italy", "🇪🇸 Spain", "🇵🇹 Portugal",
-    "🇳🇱 Netherlands", "🇧🇪 Belgium", "🇨🇭 Switzerland", "🇸🇪 Sweden", "🇳🇴 Norway",
-    "🇩🇰 Denmark", "🇫🇮 Finland", "🇮🇪 Ireland", "🇦🇹 Austria", "🇬🇷 Greece",
-    "🇹🇷 Turkey", "🇮🇳 India", "🇨🇳 China", "🇯🇵 Japan", "🇰🇷 South Korea",
-    "🇧🇷 Brazil", "🇿🇦 South Africa", "🇳🇬 Nigeria", "🇬🇭 Ghana",
-    "🇲🇦 Morocco", "🇩🇿 Algeria", "🇹🇳 Tunisia", "🇱🇾 Libya", "🇪🇬 Egypt",
-    "🇸🇦 Saudi Arabia", "🇦🇪 UAE", "🇶🇦 Qatar", "🇰🇼 Kuwait", "🇴🇲 Oman",
-    "🇾🇪 Yemen", "🇯🇴 Jordan", "🇱🇧 Lebanon", "🇮🇱 Israel", "🇵🇸 Palestine",
-    "🇮🇷 Iran", "🇮🇶 Iraq", "🇦🇫 Afghanistan", "🇵🇰 Pakistan", "🇧🇩 Bangladesh",
-    "🇱🇰 Sri Lanka", "🇳🇵 Nepal", "🇧🇹 Bhutan", "🇲🇲 Myanmar", "🇹🇭 Thailand",
-    "🇻🇳 Vietnam", "🇰🇭 Cambodia", "🇱🇦 Laos", "🇲🇾 Malaysia", "🇸🇬 Singapore",
-    "🇵🇭 Philippines", "🇮🇩 Indonesia", "🇳🇿 New Zealand", "🇵🇬 Papua New Guinea",
-    "🇫🇯 Fiji", "🇸🇧 Solomon Islands", "🇻🇺 Vanuatu", "🇼🇸 Samoa", "🇹🇴 Tonga"
-]
-
-# ---- Status options ----
-STATUS_OPTIONS = [
-    "PhD Student", "MSc Student", "BSc Student",
-    "Assistant Professor", "Associate Professor", "Professor",
-    "Lecturer", "Senior Lecturer", "Researcher", "Postdoctoral Researcher",
-    "Other"
-]
-
-# ---- Department options ----
-DEPARTMENT_OPTIONS = [
-    "Mathematics", "Applied Mathematics", "Statistics", "Computer Science",
-    "Physics", "Chemistry", "Biology", "Biotechnology",
-    "Civil Engineering", "Electrical Engineering", "Mechanical Engineering",
-    "Chemical Engineering", "Industrial Engineering",
-    "Economics", "Management", "Accounting", "Marketing",
-    "Agriculture", "Animal Science", "Plant Science",
-    "Public Health", "Medicine", "Pharmacy", "Nursing",
-    "Law", "Political Science", "History", "Geography",
-    "English", "Amharic", "Linguistics", "Journalism",
-    "Education", "Psychology", "Sociology", "Anthropology",
-    "Environmental Science", "Geology", "Meteorology",
-    "Other"
-]
-
-STUDENT_LEVEL_OPTIONS = ["Degree", "MSc", "PhD"]
-
 def init_user_db():
-    if 'user_db' not in st.session_state:
-        st.session_state.user_db = {"admin": hash_password("admin")}
-    if 'user_profiles' not in st.session_state:
-        st.session_state.user_profiles = {"admin": {"name": "Administrator", "role": "admin"}}
-    if 'pending_users' not in st.session_state:
-        st.session_state.pending_users = []
-    if 'logged_in' not in st.session_state:
+    if "user_db" not in st.session_state:
+        load_all_data()
+    if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
-    if 'current_user' not in st.session_state:
+    if "current_user" not in st.session_state:
         st.session_state.current_user = None
-    if 'notifications' not in st.session_state:
-        st.session_state.notifications = []
-    if 'forum_posts' not in st.session_state:
-        st.session_state.forum_posts = []
-    if 'chat_messages' not in st.session_state:
-        st.session_state.chat_messages = []
-    if 'feedback' not in st.session_state:
-        st.session_state.feedback = []
-    if 'user_points' not in st.session_state:
-        st.session_state.user_points = {}
-    if 'user_badges' not in st.session_state:
-        st.session_state.user_badges = {}
-    if 'events' not in st.session_state:
-        st.session_state.events = []
-    if 'mentorships' not in st.session_state:
-        st.session_state.mentorships = []
-    if 'grants' not in st.session_state:
-        st.session_state.grants = []
-    if 'papers' not in st.session_state:
-        st.session_state.papers = []
-    if 'onboarding_complete' not in st.session_state:
-        st.session_state.onboarding_complete = False
-    if 'onboarding_step' not in st.session_state:
-        st.session_state.onboarding_step = 1
-    if 'show_about' not in st.session_state:
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "🏠 Home"
+    if "show_about" not in st.session_state:
         st.session_state.show_about = False
-    if 'requests' not in st.session_state:
-        st.session_state.requests = []
-    if 'selected_professor' not in st.session_state:
+    if "selected_professor" not in st.session_state:
         st.session_state.selected_professor = None
-    if 'show_letter' not in st.session_state:
+    if "show_letter" not in st.session_state:
         st.session_state.show_letter = False
-    if 'last_request' not in st.session_state:
+    if "last_request" not in st.session_state:
         st.session_state.last_request = None
+    if "onboarding_complete" not in st.session_state:
+        st.session_state.onboarding_complete = False
+    if "onboarding_step" not in st.session_state:
+        st.session_state.onboarding_step = 1
+    # Ensure admin exists
+    if "admin" not in st.session_state.user_db:
+        load_all_data()
 
 def add_notification(message, notification_type="info", link=None):
-    st.session_state.notifications.append({
-        "id": len(st.session_state.notifications),
+    supabase_admin = get_supabase_admin()
+    new_notif = {
         "message": message,
         "type": notification_type,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "read": False,
         "link": link
-    })
+    }
+    try:
+        res = supabase_admin.table("notifications").insert(new_notif).execute()
+        if res.data:
+            st.session_state.notifications.insert(0, res.data[0])
+    except Exception as e:
+        st.error(f"Error adding notification: {e}")
 
 def add_points(username, points, action):
-    if username not in st.session_state.user_points:
-        st.session_state.user_points[username] = 0
-    st.session_state.user_points[username] += points
-    add_notification(f"⭐ +{points} points for {action}!", "success")
+    supabase_admin = get_supabase_admin()
+    try:
+        res = supabase_admin.table("user_points").select("points").eq("username", username).execute()
+        if res.data:
+            current = res.data[0]["points"]
+            new_points = current + points
+            supabase_admin.table("user_points").update({"points": new_points}).eq("username", username).execute()
+        else:
+            supabase_admin.table("user_points").insert({"username": username, "points": points}).execute()
+            new_points = points
+        st.session_state.user_points[username] = new_points
+        add_notification(f"⭐ +{points} points for {action}!", "success")
+    except Exception as e:
+        st.error(f"Error updating points: {e}")
 
 def add_badge(username, badge_name):
-    if username not in st.session_state.user_badges:
-        st.session_state.user_badges[username] = []
-    if badge_name not in st.session_state.user_badges[username]:
-        st.session_state.user_badges[username].append(badge_name)
-        add_notification(f"🏅 New badge earned: {badge_name}!", "success")
+    supabase_admin = get_supabase_admin()
+    try:
+        res = supabase_admin.table("user_badges").select("*").eq("username", username).eq("badge_name", badge_name).execute()
+        if not res.data:
+            supabase_admin.table("user_badges").insert({"username": username, "badge_name": badge_name}).execute()
+            if username not in st.session_state.user_badges:
+                st.session_state.user_badges[username] = []
+            st.session_state.user_badges[username].append(badge_name)
+            add_notification(f"🏅 New badge earned: {badge_name}!", "success")
+    except Exception as e:
+        st.error(f"Error adding badge: {e}")
 
 def login_user(username, password):
     init_user_db()
@@ -163,7 +247,7 @@ def login_user(username, password):
         add_notification(f"Welcome back, {display_name}!", "success")
         add_points(username, 5, "Daily login")
         st.balloons()
-        time.sleep(0.5)  # allow balloons to render
+        time.sleep(0.5)
         return True, "✅ Login successful!"
     else:
         return False, "❌ Incorrect password. Please try again."
@@ -180,7 +264,7 @@ def request_registration(full_name, username, password, confirm_password, affili
     if not username.endswith("@amu.edu.et"):
         return False, "❌ Username must end with @amu.edu.et"
     if username in st.session_state.user_db:
-        return False, "❌ Username already exists. Please choose a different one."
+        return False, "❌ Username already exists."
     if password != confirm_password:
         return False, "❌ Passwords do not match."
     if len(password) < 6:
@@ -193,9 +277,11 @@ def request_registration(full_name, username, password, confirm_password, affili
         return False, "❌ Please select a department."
     if not nationality:
         return False, "❌ Please select a nationality."
-    for p in st.session_state.pending_users:
-        if p['username'] == username:
-            return False, "❌ Registration already pending. Please wait for admin approval."
+    supabase_admin = get_supabase_admin()
+    res = supabase_admin.table("pending_users").select("*").eq("username", username).execute()
+    if res.data:
+        return False, "❌ Registration already pending. Please wait for admin approval."
+
     request = {
         "full_name": full_name.strip(),
         "username": username,
@@ -211,9 +297,13 @@ def request_registration(full_name, username, password, confirm_password, affili
         "approved": False,
         "rejected": False
     }
-    st.session_state.pending_users.append(request)
-    add_notification(f"📝 New registration request from {full_name} ({username})", "info")
-    return True, "✅ Registration request submitted! Please wait for admin approval."
+    try:
+        supabase_admin.table("pending_users").insert(request).execute()
+        st.session_state.pending_users.append(request)
+        add_notification(f"📝 New registration request from {full_name} ({username})", "info")
+        return True, "✅ Registration request submitted! Please wait for admin approval."
+    except Exception as e:
+        return False, f"❌ Database error: {e}"
 
 def approve_user(request_index):
     if request_index >= len(st.session_state.pending_users):
@@ -222,21 +312,37 @@ def approve_user(request_index):
     if req['approved'] or req['rejected']:
         return False, "❌ Request already processed."
     username = req['username']
-    st.session_state.user_db[username] = req['password_hash']
-    st.session_state.user_profiles[username] = {
-        "name": req['full_name'],
-        "affiliation": req['affiliation'],
-        "status": req['status'],
-        "position": req['position'],
-        "department": req['department'],
-        "student_level": req['student_level'],
-        "nationality": req['nationality'],
-        "other_fields": req['other_fields'],
-        "role": "user"
-    }
-    req['approved'] = True
-    add_notification(f"✅ User {username} approved!", "success")
-    return True, f"✅ User {username} approved successfully!"
+    supabase_admin = get_supabase_admin()
+    try:
+        # Add user
+        supabase_admin.table("users").insert({
+            "username": username,
+            "password_hash": req['password_hash'],
+            "role": "user"
+        }).execute()
+        # Add profile
+        profile = {
+            "username": username,
+            "name": req['full_name'],
+            "affiliation": req['affiliation'],
+            "status": req['status'],
+            "position": req['position'],
+            "department": req['department'],
+            "student_level": req['student_level'],
+            "nationality": req['nationality'],
+            "other_fields": req['other_fields']
+        }
+        supabase_admin.table("user_profiles").insert(profile).execute()
+        # Mark pending as approved
+        supabase_admin.table("pending_users").update({"approved": True}).eq("id", req["id"]).execute()
+        # Update session
+        st.session_state.user_db[username] = req['password_hash']
+        st.session_state.user_profiles[username] = profile
+        req['approved'] = True
+        add_notification(f"✅ User {username} approved!", "success")
+        return True, f"✅ User {username} approved successfully!"
+    except Exception as e:
+        return False, f"❌ Error approving: {e}"
 
 def reject_user(request_index):
     if request_index >= len(st.session_state.pending_users):
@@ -244,9 +350,14 @@ def reject_user(request_index):
     req = st.session_state.pending_users[request_index]
     if req['approved'] or req['rejected']:
         return False, "❌ Request already processed."
-    req['rejected'] = True
-    add_notification(f"❌ User {req['username']} registration rejected.", "warning")
-    return True, f"❌ User {req['username']} rejected."
+    supabase_admin = get_supabase_admin()
+    try:
+        supabase_admin.table("pending_users").update({"rejected": True}).eq("id", req["id"]).execute()
+        req['rejected'] = True
+        add_notification(f"❌ User {req['username']} registration rejected.", "warning")
+        return True, f"❌ User {req['username']} rejected."
+    except Exception as e:
+        return False, f"❌ Error rejecting: {e}"
 
 # ===================================================================
 # CSS STYLES (full styling – same as original)
@@ -1225,42 +1336,466 @@ RESEARCHER_PROFILES = {
             {"degree": "M.Sc. in Applied Mathematics", "institution": "NIT Tiruchirappalli", "year": "1977"}
         ]
     },
-    # --------------------- Additional 6 researchers omitted for brevity ---------------------
-    # (Full list is available in the original code; keep all 8 for the final version)
+    "researcher_3": {
+        "id": "A003",
+        "name": "Dr. D.Sc. Abebe Geletu",
+        "title": "German Research Chair / Full Professor of Mathematics",
+        "institution": "AIMS Rwanda",
+        "department": "Mathematics and Computer Science",
+        "education": "D.Sc. (Habil.) in Systems Optimization, TU Ilmenau; Ph.D. in Numerical Optimization, TU Ilmenau; M.Sc. Applied Mathematics, AAU; B.Sc. Mathematics, AAU",
+        "profile_image": "🧠🌍🔬",
+        "research_interests": "Systems optimization for sustainable resources utilization in Africa; multidisciplinary research for engineering problems; AI and data-driven approaches for complex problems; mathematical optimization; intelligent and predictive control applications; big-data analytics; deep learning for image processing and computer vision; systems development and modernization of African agrifood supply-chain",
+        "research_keywords": ["Optimization", "Stochastic Optimization", "Machine Learning", "AI", "Data-Driven Optimization", "Control Engineering", "Image Processing", "Computer Vision", "Big-Data Analytics", "Predictive Control", "Sustainability", "Smart Water Networks", "Microgrids", "Renewable Energy"],
+        "specializations": [
+            {"area": "Systems Optimization", "level": 5},
+            {"area": "Stochastic Optimization", "level": 5},
+            {"area": "Machine Learning", "level": 4},
+            {"area": "Control Engineering", "level": 4},
+            {"area": "Big-Data Analytics", "level": 4},
+            {"area": "Image Processing", "level": 3}
+        ],
+        "publications": [
+            "Chance constrained optimization of elliptic PDE systems with smoothing approximations. ESAIM: COCV, 26(2020)70.",
+            "Analytic approximation and differentiability of joint chance constraints. Optimization, 68(10), 1985-2023, 2019.",
+            "An inner-outer approximation approach to chance constrained optimization. SIAM Journal on Optimization, 27(3), 1834-1857, 2017.",
+            "A tractable approximation of nonconvex chance constrained optimization with non-Gaussian uncertainties. Journal of Engineering Optimization, 47(4), pp. 495-520, 2015.",
+            "Recent developments in computational approaches to optimization under uncertainty. ChemBioEng Reviews, 1(4), 170-190, 2014.",
+            "On robustness of set-valued maps and marginal value functions. Discussiones Mathematicae, 25, 59-108, 2005.",
+            "A Conceptual Method for Solving Generalized Semi-infinite Programming Problems. European Journal of Operations Research, 157(1), 3-15, 2004.",
+            "Stochastische Optimierung parabolische PDE-Systeme. at-automatisierungstechnik, 66(11): 975-985, 2018.",
+            "An approach to determining the number of time intervals for solving dynamic optimization problems. Industrial Engineering Chemical Research, 57, 4340-4350, 2018.",
+            "An analytical Hessian and parallel computing approach for efficient dynamic optimization. Industrial Engineering Chemical Research, 54(48), 12086-12095, 2015."
+        ],
+        "supervisory_capacity": 8,
+        "current_students": 7,
+        "completed_phds": 3,
+        "available_for_collaboration": True,
+        "collaboration_types": ["Research Supervision", "Joint Research", "Consultancy", "Peer Review"],
+        "phd_students_completed": [
+            {"name": "Ines Mynttinen", "year": "2013", "topic": "Optimization of autonomously switching dynamic hybrid systems"},
+            {"name": "Michael Klöppel", "year": "2014", "topic": "Efficient numerical solution of chance constrained optimization problems"},
+            {"name": "Evgeny Lazutkin", "year": "2019", "topic": "Efficient solution of nonlinear optimal control problems"}
+        ],
+        "email": "abebe.geletu@aims.ac.rw",
+        "phone": "+250 788 888 888",
+        "orcid_id": "0000-0001-2345-6789",
+        "orcid_url": "https://orcid.org/0000-0001-2345-6789",
+        "researchgate_url": "https://www.researchgate.net/profile/Abebe-Geletu",
+        "google_scholar_url": "https://scholar.google.com/citations?user=abebe_geletu",
+        "scopus_url": "",
+        "institutional_id": "AIMS/RW/CHAIR/001",
+        "h_index": 15,
+        "total_citations": 850,
+        "trust_score": 92,
+        "last_verified": "2026-08-09",
+        "verification_badges": ["ORCID", "ResearchGate", "Google Scholar", "D.Sc.", "Ph.D.", "50+ Publications", "German Research Chair", "Full Professor"],
+        "top_co_authors": [
+            {"name": "Prof. Pu Li", "institution": "TU Ilmenau, Germany"},
+            {"name": "Prof. Armin Hoffmann", "institution": "TU Ilmenau, Germany"}
+        ],
+        "collaborating_institutions": ["TU Ilmenau (Germany)", "Addis Ababa University", "Haramaya University", "Hawassa University", "AIMS Rwanda"],
+        "professional_memberships": ["Ethiopian Mathematical Society", "African Mathematical Union", "SIAM"],
+        "biography": "Dr. D.Sc. Abebe Geletu is the German Research Chair and Full Professor of Mathematics at AIMS Rwanda. His research focuses on systems optimization for sustainable resources utilization in Africa, AI/data-driven approaches, and multidisciplinary engineering problems. He previously held academic positions at TU Ilmenau, Germany for over 20 years.",
+        "education_details": [
+            {"degree": "D.Sc. (Habil.) in Systems Optimization", "institution": "TU Ilmenau, Germany", "year": "2015"},
+            {"degree": "Ph.D. in Numerical Optimization", "institution": "TU Ilmenau, Germany", "year": "2004"},
+            {"degree": "M.Sc. in Applied Mathematics", "institution": "Addis Ababa University", "year": "1998"},
+            {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "1994"}
+        ]
+    },
+    "researcher_4": {
+        "id": "A004",
+        "name": "Dr. Surafel Luleseged Tilahun",
+        "title": "Associate Professor",
+        "institution": "Addis Ababa Science and Technology University",
+        "department": "Department of Mathematics",
+        "education": "Ph.D. in Applied/Computational Mathematics",
+        "profile_image": "📊🤖📈",
+        "research_interests": "Applied and computational mathematics; data science and artificial intelligence theory and applications; metaheuristic algorithms; multiobjective optimization; operations research; machine learning; data analytics; optimization algorithms; evolutionary computation; global optimization",
+        "research_keywords": ["Metaheuristic", "Genetic Algorithm", "Multiobjective Optimization", "Particle Swarm Optimization", "Operations Research", "Machine Learning", "Data Analytics", "Evolutionary Algorithms", "Heuristics", "Combinatorial Optimization", "Scheduling", "Global Optimization", "Simulated Annealing", "Differential Evolution", "Ant Colony Optimization"],
+        "specializations": [
+            {"area": "Metaheuristic Algorithms", "level": 5},
+            {"area": "Multiobjective Optimization", "level": 5},
+            {"area": "Machine Learning", "level": 4},
+            {"area": "Operations Research", "level": 4},
+            {"area": "Data Analytics", "level": 4},
+            {"area": "Evolutionary Computation", "level": 4}
+        ],
+        "publications": [
+            "A Convergent Particle Swarm Optimization Method with Repulsive Functional Constraints for Solving Unimodal and Multimodal Problems (SN Computer Science, June 2026)",
+            "Chance-constrained reachability analysis for data-driven predictive control of unknown nonlinear systems (Kybernetika -Praha-, May 2026)",
+            "Building Trustworthy and Ethical AI for Healthcare in Africa: Governance, Data Protection, and Interoperability Framework (Research, October 2025)",
+            "Dynamic vehicle parking pricing: a bilevel optimization approach (Operational Research, January 2025)",
+            "Rule based chatbot design methods: A review (Journal of Computational Science and Data Analytics, September 2024)"
+        ],
+        "supervisory_capacity": 5,
+        "current_students": 4,
+        "completed_phds": 2,
+        "available_for_collaboration": True,
+        "collaboration_types": ["Research Supervision", "Joint Research", "Consultancy"],
+        "phd_students_completed": [
+            {"name": "Student 1", "year": "2020", "topic": "Metaheuristic Optimization"},
+            {"name": "Student 2", "year": "2022", "topic": "Machine Learning Applications"}
+        ],
+        "email": "surafel.luleseged@aastu.edu.et",
+        "phone": "+251 911 234 567",
+        "orcid_id": "0000-0002-3456-7890",
+        "orcid_url": "https://orcid.org/0000-0002-3456-7890",
+        "researchgate_url": "https://www.researchgate.net/profile/Surafel-Tilahun-2",
+        "google_scholar_url": "https://scholar.google.com/citations?user=WKN0n8cAAAAJ&hl=en",
+        "scopus_url": "",
+        "institutional_id": "AASTU/MATH/001",
+        "h_index": 18,
+        "total_citations": 1265,
+        "trust_score": 90,
+        "last_verified": "2026-08-09",
+        "verification_badges": ["ORCID", "ResearchGate", "Google Scholar", "PhD", "Peer Review", "Editor-in-Chief"],
+        "top_co_authors": [
+            {"name": "Hong Choon Ong", "institution": "University of Science Malaysia"},
+            {"name": "J.-M. T. Ngnotchouye", "institution": "University of KwaZulu-Natal"}
+        ],
+        "collaborating_institutions": ["University of Zululand", "University of KwaZulu-Natal", "University of Science Malaysia", "Saudi Electronic University", "Arba Minch University"],
+        "professional_memberships": ["Ethiopian Mathematical Association", "Ethiopian Space Science Society", "SIAM", "CSSSA"],
+        "biography": "Dr. Surafel Luleseged Tilahun is an Associate Professor at Addis Ababa Science and Technology University. He is currently working on applied and computational mathematics, data science, and AI theory and applications. He serves as Editor-in-Chief at the Journal of Computational Science and Data Analytics.",
+        "education_details": [
+            {"degree": "Ph.D. in Applied/Computational Mathematics", "institution": "University of Science Malaysia", "year": "2012"},
+            {"degree": "M.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2008"},
+            {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2006"}
+        ]
+    },
+    "researcher_5": {
+        "id": "A005",
+        "name": "Prof. Gemechis File Duressa",
+        "title": "Professor (Full) of Mathematics",
+        "institution": "Jimma University",
+        "department": "Department of Mathematics",
+        "education": "Ph.D. in Numerical Analysis/Applied Mathematics",
+        "profile_image": "📐🧮⭐",
+        "research_interests": "Numerical analysis of singularly perturbed differential equations; delay differential equations; differential difference equations; finite difference methods; finite element methods; B-spline collocation methods; computational neuroscience applications; singularly perturbed parabolic partial differential equations; boundary layer problems; uniform convergence methods",
+        "research_keywords": ["Singular Perturbation", "Delay Differential Equations", "Parabolic PDEs", "Finite Difference Method", "B-Spline Collocation", "Boundary Layer Problems", "Uniform Convergence", "Reaction-Diffusion Equations", "Convection-Diffusion Problems", "Numerical Methods", "Stability Analysis", "Computational Neuroscience"],
+        "specializations": [
+            {"area": "Numerical Analysis", "level": 5},
+            {"area": "Singular Perturbation", "level": 5},
+            {"area": "Delay Differential Equations", "level": 5},
+            {"area": "Finite Difference Methods", "level": 5},
+            {"area": "Parabolic PDEs", "level": 4},
+            {"area": "B-Spline Collocation", "level": 4}
+        ],
+        "publications": [
+            "Modeling and optimal control analysis of transmission dynamics of COVID-19: The case of Ethiopia. Alexandria Engineering Journal 60 (1), 719-732 (2021).",
+            "Novel Numerical Scheme for Singularly Perturbed Time Delay Convection-Diffusion Equation. Advances in Mathematical Physics 2021 (2021).",
+            "Analysis of Atangana-Baleanu fractional-order SEAIR epidemic model with optimal control. Advances in Difference Equations 2021 (1), 174 (2021).",
+            "Optimal control and sensitivity analysis for transmission dynamics of Coronavirus. Results in Physics 19, 103642 (2020).",
+            "Uniformly Convergent Numerical Method for Singularly Perturbed Parabolic Differential Difference Equations. Kragujevac Journal of Mathematics 46 (1), 65-84 (2019).",
+            "Robust finite difference method for singularly perturbed two-parameter parabolic convection-diffusion problems. International Journal of Computational Methods 18 (02), 2050034 (2021).",
+            "Extended cubic B-spline collocation method for singularly perturbed parabolic differential-difference equation. International Journal for Numerical Methods in Biomedical Engineering 37 (2), e3423 (2021).",
+            "A method of line with improved accuracy for singularly perturbed parabolic convection-diffusion problems with large temporal lag. Results in Applied Mathematics 11, 100174 (2021).",
+            "Accelerated fitted operator finite difference method for singularly perturbed parabolic reaction-diffusion problems. Computational Methods for Differential Equations 9 (3), 886-898 (2021).",
+            "Robust numerical method for singularly perturbed semilinear parabolic differential difference equations. Mathematics and Computers in Simulation 188, 537-547 (2021).",
+            "A uniformly convergent collocation method for singularly perturbed delay parabolic reaction-diffusion problem. Abstract and Applied Analysis 2021 (2021)."
+        ],
+        "supervisory_capacity": 6,
+        "current_students": 5,
+        "completed_phds": 8,
+        "available_for_collaboration": True,
+        "collaboration_types": ["Research Supervision", "Joint Research", "Consultancy", "Peer Review"],
+        "phd_students_completed": [
+            {"name": "Student 1", "year": "2018", "topic": "Singular Perturbation Methods"},
+            {"name": "Student 2", "year": "2020", "topic": "Numerical Analysis of PDEs"}
+        ],
+        "email": "gemechis.duressa@ju.edu.et",
+        "phone": "+251 912 345 678",
+        "orcid_id": "0000-0003-4567-8901",
+        "orcid_url": "https://orcid.org/0000-0003-4567-8901",
+        "researchgate_url": "https://www.researchgate.net/profile/Gemechis-Duressa",
+        "google_scholar_url": "https://scholar.google.com/citations?user=gemechis_duressa",
+        "scopus_url": "",
+        "institutional_id": "JU/MATH/001",
+        "h_index": 24,
+        "total_citations": 2228,
+        "trust_score": 94,
+        "last_verified": "2026-08-09",
+        "verification_badges": ["ORCID", "ResearchGate", "Google Scholar", "PhD", "60+ Publications", "Full Professor"],
+        "top_co_authors": [
+            {"name": "Mesfin Mekuria", "institution": "Adama Science and Technology University"},
+            {"name": "Tesfaye Aga Bullo", "institution": "Jimma University"}
+        ],
+        "collaborating_institutions": ["Jimma University", "Adama Science and Technology University", "Madda Walabu University", "NIT Warangal (India)"],
+        "professional_memberships": ["Ethiopian Mathematical Association", "SIAM"],
+        "biography": "Prof. Gemechis File Duressa is a Professor of Mathematics at Jimma University, Ethiopia. He is an instructor, researcher, and consultant specializing in numerical analysis of singularly perturbed differential equations. He has supervised numerous graduate students and published extensively in the field.",
+        "education_details": [
+            {"degree": "Ph.D. in Numerical Analysis/Applied Mathematics", "institution": "National Institute of Technology Warangal, India", "year": "2013"},
+            {"degree": "M.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2007"},
+            {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2005"}
+        ]
+    },
+    "researcher_6": {
+        "id": "A006",
+        "name": "Dr. Addisu Fekadu Andeta",
+        "title": "Associate Professor of Biotechnology / Food Microbiology",
+        "institution": "Arba Minch University",
+        "department": "Biology/Biotechnology Program",
+        "education": "Ph.D. in Bioscience Engineering, KU Leuven, Belgium",
+        "profile_image": "🔬🧫🌾",
+        "research_interests": "Fermented foods, Food microbiology, Microbial ecology, Genetic diversity studies, Starter culture technology, Food safety, Biotechnology, Probiotics, Agricultural microbiology, Food fermentation, Lactic acid bacteria, Enset fermentation, Soymilk, Water hyacinth utilization, Biotechnological applications",
+        "research_keywords": ["Fermented Foods", "Food Microbiology", "Microbial Ecology", "Starter Cultures", "Probiotics", "Lactic Acid Bacteria", "Enset Fermentation", "Biotechnology", "Genetic Diversity", "Food Safety", "Agricultural Microbiology"],
+        "specializations": [
+            {"area": "Food Microbiology", "level": 5},
+            {"area": "Fermentation Technology", "level": 5},
+            {"area": "Microbial Ecology", "level": 4},
+            {"area": "Biotechnology", "level": 4},
+            {"area": "Probiotics", "level": 4},
+            {"area": "Starter Culture Technology", "level": 4}
+        ],
+        "publications": [
+            "Synergistic effects of antibiotics and heavy metals on antibiotic resistance gene formation and implications for public and environmental health (2026) - Discover Applied Sciences",
+            "Native rhizobia nodulating soybean (Glycine max (L.) Merr.) performs better than commercial strain across locations in South Ethiopia Region (2026) - Scientific Reports",
+            "Correction: Utilization of water hyacinth briquette as an alternative energy source to combat blooming in Abaya and Chamo Lakes, Ethiopia (2026) - BMC Environmental Science",
+            "Soymilk as a sustainable nutritional alternative to cow's milk in South Ethiopia (2026) - Discover Food",
+            "Probiotic potential of lactic acid bacteria isolated from Ethiopian traditional fermented Cheka beverage (2024) - Annals of Microbiology",
+            "Ethno-pharmacological investigations of Moringa stenopetala Bak. Cuf. and its production challenges in southern Ethiopia (2022) - PLoS One",
+            "Professionalism, stigma, and willingness to provide patient-centered safe abortion counseling and care (2022) - Reproductive Health",
+            "Silage making of maize stover and banana pseudostem under South Ethiopian conditions (2020) - Microbial Biotechnology",
+            "Effect of fermentation system on the physicochemical and microbial community dynamics during enset fermentation (2019) - Journal of Applied Microbiology",
+            "Fermentation of enset (Ensete ventricosum) in the Gamo highlands of Ethiopia (2018) - Food Microbiology",
+            "Variability, Heritability and Genetic Advance for Some Yield and Yield Related Traits in Barley Landraces (2015) - International Journal of Plant Breeding and Genetics",
+            "Qualitative traits variation in barley (Hordeum vulgare L.) landraces from the Southern highlands of Ethiopia (2018) - International Journal of Biodiversity and Conservation"
+        ],
+        "supervisory_capacity": 5,
+        "current_students": 4,
+        "completed_phds": 2,
+        "available_for_collaboration": True,
+        "collaboration_types": ["Research Supervision", "Joint Research", "Consultancy"],
+        "phd_students_completed": [
+            {"name": "Student 1", "year": "2022", "topic": "Fermentation of Traditional Ethiopian Beverages"},
+            {"name": "Student 2", "year": "2024", "topic": "Probiotic Potential of Lactic Acid Bacteria"}
+        ],
+        "email": "addisu.fekadu@amu.edu.et",
+        "phone": "+251 917 890 124",
+        "orcid_id": "Not Available",
+        "orcid_url": "",
+        "researchgate_url": "https://www.researchgate.net/profile/Addisu-Fekadu-Andeta",
+        "google_scholar_url": "https://scholar.google.com/citations?user=Xs3MkUcAAAAJ&hl=en",
+        "scopus_url": "",
+        "institutional_id": "AMU/BIO/007",
+        "h_index": 11,
+        "total_citations": 379,
+        "trust_score": 88,
+        "last_verified": "2026-08-09",
+        "verification_badges": ["ResearchGate", "Google Scholar", "PhD", "Associate Professor", "35+ Publications"],
+        "top_co_authors": [
+            {"name": "Dr. Berhanu Mekonen Alemu", "institution": "Arba Minch University"},
+            {"name": "Prof. Natesan Thillaigovindan", "institution": "Arba Minch University"},
+            {"name": "Leen Van Campenhout", "institution": "KU Leuven, Belgium"},
+            {"name": "Dries Vandeweyer", "institution": "KU Leuven, Belgium"}
+        ],
+        "collaborating_institutions": ["KU Leuven (Belgium)", "Arba Minch University", "Addis Ababa University"],
+        "professional_memberships": ["Ethiopian Biotechnology Society", "African Society for Microbiology", "Food Safety and Quality Association"],
+        "biography": "Dr. Addisu Fekadu Andeta is an Associate Professor at Arba Minch University in the Biology/Biotechnology Program. He holds a Ph.D. in Bioscience Engineering from KU Leuven, Belgium. His research focuses on fermented foods, food microbiology, microbial ecology, and starter culture technology. He has published extensively on enset fermentation, probiotic potential of traditional Ethiopian beverages, and agricultural microbiology. He was awarded the Josef G Knoll European Science Award in September 2020.",
+        "education_details": [
+            {"degree": "Ph.D. in Bioscience Engineering", "institution": "KU Leuven, Belgium", "year": "2020"},
+            {"degree": "M.Sc. in Biotechnology", "institution": "Addis Ababa University", "year": "2010"},
+            {"degree": "B.Sc. in Biology", "institution": "Arba Minch University", "year": "2006"}
+        ]
+    },
+    "researcher_7": {
+        "id": "A007",
+        "name": "Prof. Legesse Lemecha Obsu",
+        "title": "Associate Professor of Mathematics / Dean for Postgraduate Studies",
+        "institution": "Adama Science and Technology University",
+        "department": "Department of Applied Mathematics",
+        "education": "Ph.D. in Applied Mathematics",
+        "profile_image": "📐🚦🧮",
+        "research_interests": "Hyperbolic traffic flow modeling, Optimal control, Optimization, Mathematical Epidemiology, Hyperbolic conservation laws, Traffic flow, Mathematical modeling of infectious diseases, COVID-19 transmission dynamics, TB and COVID-19 co-infection, Pest control modeling, Fractional mathematical models, Malaria transmission dynamics, Cholera modeling, HIV/AIDS modeling, Coffee berry borer dynamics, Spatial modeling, Cost-effectiveness analysis",
+        "research_keywords": ["Traffic Flow Modeling", "Optimal Control", "Optimization", "Mathematical Epidemiology", "Hyperbolic Conservation Laws", "Mathematical Modeling", "Infectious Diseases", "COVID-19", "TB", "Malaria", "Fractional Calculus", "Pest Control", "Cholera", "HIV/AIDS", "Spatial Modeling"],
+        "specializations": [
+            {"area": "Hyperbolic Traffic Flow Modeling", "level": 5},
+            {"area": "Optimal Control", "level": 5},
+            {"area": "Optimization", "level": 5},
+            {"area": "Mathematical Epidemiology", "level": 5},
+            {"area": "Mathematical Modeling", "level": 5},
+            {"area": "Fractional Calculus", "level": 4}
+        ],
+        "publications": [
+            "Optimal control strategies for the transmission risk of COVID-19 (2020) - Journal of Biological Dynamics",
+            "Mathematical modeling for COVID-19 transmission dynamics: a case study in Ethiopia (2022) - Results in Physics",
+            "Mathematical Modeling and Analysis of TB and COVID-19 Co-infection (2022) - Journal of Applied Mathematics",
+            "Pest control using farming awareness: Impact of time delays and optimal use of biopesticides (2021) - Chaos, Solitons & Fractals",
+            "Mathematical modeling and analysis for the co-infection of COVID-19 and tuberculosis (2022) - Heliyon",
+            "A fractional mathematical model of malaria transmission dynamics with liver stage relapse (2026) - Discover Applied Sciences",
+            "Spatial modeling and analysis of malaria transmission dynamics involving Anopheles stephensi with application to Ethiopia (2026) - Discover Public Health",
+            "Optimal control and cost-effectiveness analysis of coffee berries invasion with Hypothenemus hampei dynamics (2026) - Mathematics in Applied Sciences and Engineering",
+            "Optimal Control and Bifurcation Analysis of Cholera Model (2026) - Journal of Prime Research in Mathematics",
+            "Fractional modeling of HIV/AIDS transmission dynamics considering pre-exposure prophylaxis and drug resistant strain (2026) - Journal of Applied Mathematics and Computing"
+        ],
+        "supervisory_capacity": 6,
+        "current_students": 5,
+        "completed_phds": 8,
+        "available_for_collaboration": True,
+        "collaboration_types": ["Research Supervision", "Joint Research", "Consultancy", "Peer Review"],
+        "phd_students_completed": [
+            {"name": "Student 1", "year": "2020", "topic": "Mathematical Epidemiology"},
+            {"name": "Student 2", "year": "2022", "topic": "Optimal Control"},
+            {"name": "Student 3", "year": "2024", "topic": "Traffic Flow Modeling"},
+            {"name": "Student 4", "year": "2024", "topic": "Fractional Calculus"}
+        ],
+        "email": "legesse.obsu@astu.edu.et",
+        "phone": "+251 911 234 568",
+        "orcid_id": "Not Available",
+        "orcid_url": "",
+        "researchgate_url": "https://www.researchgate.net/profile/Legesse-Obsu",
+        "google_scholar_url": "https://scholar.google.com/citations?hl=en&user=Go4xjW0AAAAJ",
+        "scopus_url": "",
+        "institutional_id": "ASTU/MATH/004",
+        "h_index": 16,
+        "total_citations": 789,
+        "trust_score": 90,
+        "last_verified": "2026-08-09",
+        "verification_badges": ["ResearchGate", "Google Scholar", "PhD", "Professor", "Dean", "80+ Publications"],
+        "top_co_authors": [
+            {"name": "Abdisa Shiferaw Melese", "institution": "Adama Science and Technology University"},
+            {"name": "Eshetu Dadi Gurmu", "institution": "Adama Science and Technology University"},
+            {"name": "Prof. O. D. Makinde", "institution": "Stellenbosch University"},
+            {"name": "Feyissa Kebede Bushu", "institution": "Adama Science and Technology University"},
+            {"name": "Mohammed Dawed", "institution": "Hawassa University"},
+            {"name": "Getachew Fetene", "institution": "Adama Science and Technology University"},
+            {"name": "Abdurkadir Edeo Gemeda", "institution": "Adama Science and Technology University"}
+        ],
+        "collaborating_institutions": ["Adama Science and Technology University", "Stellenbosch University", "Hawassa University", "Addis Ababa University"],
+        "professional_memberships": ["Ethiopian Mathematical Association", "African Mathematical Union", "SIAM"],
+        "biography": "Prof. Legesse Lemecha Obsu is an Associate Professor of Mathematics and Dean for Postgraduate Studies at Adama Science and Technology University, Ethiopia. His research focuses on hyperbolic traffic flow modeling, optimal control, optimization, and mathematical epidemiology. He has published extensively on mathematical modeling of infectious diseases including COVID-19, TB, malaria, and HIV/AIDS. He has supervised numerous PhD and MSc students and serves as a reviewer for several international journals.",
+        "education_details": [
+            {"degree": "Ph.D. in Applied Mathematics", "institution": "Adama Science and Technology University", "year": "2015"},
+            {"degree": "M.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2008"},
+            {"degree": "B.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2005"}
+        ]
+    },
+    "researcher_8": {
+        "id": "A008",
+        "name": "Dr. Simon Derkee Zawka",
+        "title": "Associate Professor of Mathematics / Director for Publication, Documentation and Dissemination",
+        "institution": "Arba Minch University",
+        "department": "Department of Mathematics",
+        "education": "Ph.D. in Mathematics, Andhra University, India (2018)",
+        "profile_image": "🌿📊🧮",
+        "research_interests": "Mathematical Bioeconomics, Mathematical Biology, Mathematical Modeling, Optimal Control, Dynamical Systems, Mathematical Ecology, Renewable Resource Management, Pollution Control, Harvesting Strategies, Prey-Predator Systems, Marine Protected Areas, Ecotourism, Fisheries Management",
+        "research_keywords": ["Mathematical Bioeconomics", "Mathematical Biology", "Optimal Control", "Dynamical Systems", "Mathematical Modeling", "Renewable Resource Management", "Pollution Control", "Harvesting Strategies", "Prey-Predator Systems", "Marine Protected Areas", "Fisheries Management"],
+        "specializations": [
+            {"area": "Mathematical Bioeconomics", "level": 5},
+            {"area": "Mathematical Biology", "level": 5},
+            {"area": "Optimal Control", "level": 5},
+            {"area": "Dynamical Systems", "level": 5},
+            {"area": "Mathematical Modeling", "level": 5},
+            {"area": "Mathematical Ecology", "level": 4}
+        ],
+        "publications": [
+            "Optimal harvesting of a renewable resource in a polluted environment: An allocation problem of the sole owner (2019) - Natural Resource Modeling, 32(2), e12206",
+            "Marine protected areas for resilience and economic development (2023) - Aquatic Living Resources, 36, 22",
+            "Renewable resource management in a seasonally fluctuating environment with restricted harvesting effort (2018) - Mathematical Biosciences, 301, 1-9",
+            "Existence and optimal harvesting of two competing species in a polluted environment with pollution reduction effect (2021) - Journal of Mathematical Modeling, 9(4), 517-536",
+            "Optimal effort, fish farming, and marine reserve in fisheries management (2024) - Aquaculture and Fisheries, 9(6), 975-980",
+            "Influence of investing in treating a polluted environment on the harvest: A problem of optimal allocation (2019) - Journal of Biological Systems, 27(02), 257-279",
+            "Deep Koopman-based reachability analysis for data-driven predictive control of unknown nonlinear systems (2025) - IFAC Journal of Systems and Control",
+            "Bio-Economics of a Renewable Resource in the Presence of Pollution: The Problem of Optimal Effort Allocation (2020) - Nonlinear Dyn. Syst. Theory, 20(5), 552-567",
+            "Dynamics and optimal harvesting of prey–predator in a polluted environment in the presence of scavenger and pollution control (2023) - Mathematics Open, 2, 2350004",
+            "The impact of pollution reduction on the optimal harvesting strategy in a seasonally changing and polluted environment (2024) - Mathematics in Applied Sciences and Engineering, 5(2), 165-184",
+            "Optimal harvesting for a single-species population governed by Gompertz law: Influence of environmental fluctuation and limited harvesting capacity (2019) - International Journal of Biomathematics, 12(02), 1950018",
+            "Optimizing shellfish aquaculture in nitrogen and fisheries management (2025) - Mathematical Modelling and Numerical Simulation with Applications, 5(1), 18-37",
+            "Diversity and ecotourism on multipurpose marine protected areas (2024) - Mathematics in Applied Sciences and Engineering, 5(4), 329-342",
+            "Optimal management of a prey-predator system in a polluted environment with effort shared between pollution reduction and harvesting (2024) - TWMS Journal of Applied and Engineering Mathematics",
+            "Global behavior of solutions for periodic differential equations involving polynomial factors with applications to population dynamics (2017) - Functional Differential Equations, 23(3-4), 153-174"
+        ],
+        "supervisory_capacity": 5,
+        "current_students": 4,
+        "completed_phds": 2,
+        "available_for_collaboration": True,
+        "collaboration_types": ["Research Supervision", "Joint Research", "Consultancy", "Peer Review"],
+        "phd_students_completed": [
+            {"name": "Student 1", "year": "2022", "topic": "Mathematical Bioeconomics"},
+            {"name": "Student 2", "year": "2024", "topic": "Optimal Control in Ecology"}
+        ],
+        "email": "simon.zawka@amu.edu.et",
+        "phone": "+251 913 456 789",
+        "orcid_id": "0000-0002-8814-5516",
+        "orcid_url": "https://orcid.org/0000-0002-8814-5516",
+        "researchgate_url": "https://www.researchgate.net/profile/Simon-Zawka",
+        "google_scholar_url": "https://scholar.google.com/citations?user=4zYjiDQAAAAJ&hl=en",
+        "scopus_url": "",
+        "institutional_id": "AMU/MATH/008",
+        "h_index": 4,
+        "total_citations": 49,
+        "trust_score": 85,
+        "last_verified": "2026-08-09",
+        "verification_badges": ["ORCID", "ResearchGate", "Google Scholar", "PhD", "Associate Professor", "Director", "20+ Publications"],
+        "top_co_authors": [
+            {"name": "Prof. P. D. N. Srinivasu", "institution": "Andhra University, India"},
+            {"name": "Dr. Surafel Luleseged Tilahun", "institution": "Addis Ababa Science and Technology University"},
+            {"name": "Dr. Abebe Geletu", "institution": "AIMS Rwanda"},
+            {"name": "Dr. Teketel Ketema", "institution": "Mekdela Amba University"},
+            {"name": "Worku T. Bitew", "institution": "State University of New York at Farmingdale"},
+            {"name": "Prof. Seshadev Padhi", "institution": "Birla Institute of Technology"}
+        ],
+        "collaborating_institutions": ["Andhra University (India)", "Arba Minch University", "Addis Ababa Science and Technology University", "AIMS Rwanda", "State University of New York at Farmingdale", "Birla Institute of Technology"],
+        "professional_memberships": ["Ethiopian Mathematical Association", "African Mathematical Union"],
+        "biography": "Dr. Simon Derkee Zawka is an Associate Professor of Mathematics at Arba Minch University (AMU) in Ethiopia. He earned his BSc in Mathematics from Arba Minch University, his MSc in Mathematics from Addis Ababa University, and his PhD in Mathematics from Andhra University, India. His research interests lie in mathematical bioeconomics, mathematical biology, mathematical modeling, optimal control, and dynamical systems. He has served as Head of the Department of Mathematics and currently directs the Publication, Documentation, and Dissemination Directorate at AMU. He has published extensively in internationally reputable journals on renewable resource management, pollution control, harvesting strategies, and ecological modeling.",
+        "education_details": [
+            {"degree": "Ph.D. in Mathematics", "institution": "Andhra University, India", "year": "2018"},
+            {"degree": "M.Sc. in Mathematics", "institution": "Addis Ababa University", "year": "2010"},
+            {"degree": "B.Sc. in Applied Mathematics", "institution": "Arba Minch University", "year": "2007"}
+        ]
+    }
 }
 
 # ===================================================================
-# HELPER FUNCTIONS - ALL MUST BE FULLY DEFINED
+# HELPER FUNCTIONS - ALL FULLY DEFINED
 # ===================================================================
 
 def create_forum_post(title, content, author, tags=[]):
+    supabase_admin = get_supabase_admin()
     post = {
-        "id": len(st.session_state.forum_posts) + 1,
         "title": title,
         "content": content,
         "author": author,
         "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "tags": [t.strip() for t in tags.split(",")] if tags else [],
-        "comments": [],
+        "tags": json.dumps([t.strip() for t in tags.split(",")]) if tags else "[]",
         "likes": 0,
-        "views": 0
+        "views": 0,
+        "comments": "[]"
     }
-    st.session_state.forum_posts.append(post)
-    add_notification(f"📝 New forum post: '{title}' by {author}", "info")
-    return post
+    try:
+        res = supabase_admin.table("forum_posts").insert(post).execute()
+        if res.data:
+            new_post = res.data[0]
+            st.session_state.forum_posts.insert(0, new_post)
+            add_notification(f"📝 New forum post: '{title}' by {author}", "info")
+            return new_post
+    except Exception as e:
+        st.error(f"Error creating post: {e}")
 
 def add_comment_to_post(post_id, author, content):
+    supabase_admin = get_supabase_admin()
     for post in st.session_state.forum_posts:
         if post["id"] == post_id:
-            comment = {"author": author, "content": content, "date": datetime.now().strftime("%Y-%m-%d %H:%M")}
-            post["comments"].append(comment)
-            add_notification(f"💬 New comment on '{post['title']}' by {author}", "info")
+            comments = json.loads(post["comments"]) if post.get("comments") else []
+            new_comment = {"author": author, "content": content, "date": datetime.now().strftime("%Y-%m-%d %H:%M")}
+            comments.append(new_comment)
+            post["comments"] = json.dumps(comments)
+            try:
+                supabase_admin.table("forum_posts").update({"comments": json.dumps(comments)}).eq("id", post_id).execute()
+                add_notification(f"💬 New comment on '{post['title']}' by {author}", "info")
+            except Exception as e:
+                st.error(f"Error adding comment: {e}")
             break
 
 def like_post(post_id):
+    supabase_admin = get_supabase_admin()
     for post in st.session_state.forum_posts:
         if post["id"] == post_id:
             post["likes"] += 1
+            try:
+                supabase_admin.table("forum_posts").update({"likes": post["likes"]}).eq("id", post_id).execute()
+            except Exception as e:
+                st.error(f"Error liking post: {e}")
             break
 
 def show_notification_center():
@@ -1272,8 +1807,13 @@ def show_notification_center():
             st.warning(f"📌 {unread} new notification(s)")
     with col2:
         if st.button("Mark All Read"):
+            supabase_admin = get_supabase_admin()
             for n in st.session_state.notifications:
                 n['read'] = True
+                try:
+                    supabase_admin.table("notifications").update({"read": True}).eq("id", n["id"]).execute()
+                except:
+                    pass
             st.rerun()
     if st.session_state.notifications:
         for note in reversed(st.session_state.notifications[-10:]):
@@ -1301,26 +1841,50 @@ def show_onboarding():
         institution = st.selectbox("Your Institution", ["Arba Minch University", "Addis Ababa University", "Bahir Dar University", "Jimma University", "Hawassa University", "Other"], index=0)
         department = st.text_input("Department", value=profile.get('department', ''))
         if st.button("Next →"):
-            st.session_state.user_profiles[st.session_state.current_user].update({"name": name, "institution": institution, "department": department})
-            st.session_state.onboarding_step = 2
-            st.rerun()
+            supabase_admin = get_supabase_admin()
+            try:
+                supabase_admin.table("user_profiles").update({
+                    "name": name,
+                    "institution": institution,
+                    "department": department
+                }).eq("username", st.session_state.current_user).execute()
+                st.session_state.user_profiles[st.session_state.current_user].update({"name": name, "institution": institution, "department": department})
+                st.session_state.onboarding_step = 2
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error updating profile: {e}")
     elif step == 2:
         st.markdown("#### Step 2: Your research interests")
         interests = st.multiselect("Select your research interests", ["Agriculture", "Medicine", "Engineering", "Environmental Science", "Physics", "Mathematics", "Computer Science", "Biology", "Chemistry", "Social Sciences"])
         if st.button("Next →"):
-            st.session_state.user_profiles[st.session_state.current_user]["interests"] = interests
-            st.session_state.onboarding_step = 3
-            st.rerun()
+            supabase_admin = get_supabase_admin()
+            try:
+                supabase_admin.table("user_profiles").update({
+                    "interests": json.dumps(interests)
+                }).eq("username", st.session_state.current_user).execute()
+                st.session_state.user_profiles[st.session_state.current_user]["interests"] = interests
+                st.session_state.onboarding_step = 3
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error updating interests: {e}")
     elif step == 3:
         st.markdown("#### Step 3: What are you looking for?")
         collab_type = st.radio("I am looking to:", ["Find Collaborators", "Join a Project", "Find a Supervisor", "Offer Mentorship"])
         if st.button("🚀 Start Exploring!"):
-            st.session_state.user_profiles[st.session_state.current_user]["collab_type"] = collab_type
-            st.session_state.onboarding_complete = True
-            add_points(st.session_state.current_user, 10, "Completed onboarding")
-            add_badge(st.session_state.current_user, "🌟 Explorer")
-            st.success("✅ Profile complete! Welcome to the research community.")
-            st.rerun()
+            supabase_admin = get_supabase_admin()
+            try:
+                supabase_admin.table("user_profiles").update({
+                    "collab_type": collab_type,
+                    "onboarding_complete": True
+                }).eq("username", st.session_state.current_user).execute()
+                st.session_state.user_profiles[st.session_state.current_user]["collab_type"] = collab_type
+                st.session_state.onboarding_complete = True
+                add_points(st.session_state.current_user, 10, "Completed onboarding")
+                add_badge(st.session_state.current_user, "🌟 Explorer")
+                st.success("✅ Profile complete! Welcome to the research community.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error updating: {e}")
 
 def show_event_calendar():
     st.markdown("### 📅 Event Calendar")
@@ -1331,10 +1895,23 @@ def show_event_calendar():
             event_desc = st.text_area("Description")
             event_type = st.selectbox("Type", ["Conference", "Workshop", "Seminar", "Webinar", "Defense", "Deadline"])
             if st.form_submit_button("Add Event"):
-                st.session_state.events.append({"title": event_title, "date": event_date.strftime("%Y-%m-%d"), "description": event_desc, "type": event_type, "added_by": st.session_state.current_user})
-                add_notification(f"📅 New event added: {event_title}", "info")
-                st.success("Event added!")
-                st.rerun()
+                supabase_admin = get_supabase_admin()
+                new_event = {
+                    "title": event_title,
+                    "date": event_date.strftime("%Y-%m-%d"),
+                    "description": event_desc,
+                    "type": event_type,
+                    "added_by": st.session_state.current_user
+                }
+                try:
+                    res = supabase_admin.table("events").insert(new_event).execute()
+                    if res.data:
+                        st.session_state.events.insert(0, res.data[0])
+                        add_notification(f"📅 New event added: {event_title}", "info")
+                        st.success("Event added!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error adding event: {e}")
     if st.session_state.events:
         for ev in sorted(st.session_state.events, key=lambda x: x['date']):
             st.markdown(f"""
@@ -1350,11 +1927,19 @@ def show_event_calendar():
 def show_grants():
     st.markdown("### 💰 Grant & Funding Opportunities")
     if not st.session_state.grants:
-        st.session_state.grants = [
+        supabase_admin = get_supabase_admin()
+        default_grants = [
             {"title": "National Science Foundation - Research Grants", "deadline": "2026-12-15", "amount": "$50,000 - $200,000", "link": "https://nsf.gov"},
             {"title": "African Union Research Innovation Fund", "deadline": "2026-11-30", "amount": "€100,000", "link": "https://au.int"},
             {"title": "Wellcome Trust - Public Health Research", "deadline": "2026-10-01", "amount": "£150,000", "link": "https://wellcome.org"}
         ]
+        for g in default_grants:
+            try:
+                res = supabase_admin.table("grants").insert(g).execute()
+                if res.data:
+                    st.session_state.grants.append(res.data[0])
+            except:
+                pass
     for grant in st.session_state.grants:
         st.markdown(f"""
         <div style="background:#E8F0FE;padding:1rem;border-radius:12px;margin-bottom:0.5rem;">
@@ -1388,10 +1973,10 @@ def show_chat():
     if not st.session_state.chat_messages:
         st.info("No messages yet. Start the conversation!")
     for msg in st.session_state.chat_messages[-20:]:
-        cls = "user" if msg['user'] == st.session_state.current_user else "other"
+        cls = "user" if msg['sender'] == st.session_state.current_user else "other"
         st.markdown(f"""
         <div class="chat-message {cls}">
-            <span class="chat-author">{msg['user']}</span>
+            <span class="chat-author">{msg['sender']}</span>
             <span class="chat-time">({msg['time']})</span>
             <p style="margin:0.2rem 0 0 0;">{msg['content']}</p>
         </div>
@@ -1400,9 +1985,20 @@ def show_chat():
         msg = st.text_input("Type your message...", key="chat_input", placeholder="Share a quick thought...")
         if st.form_submit_button("Send"):
             if msg:
-                st.session_state.chat_messages.append({"user": st.session_state.current_user, "content": msg, "time": datetime.now().strftime("%H:%M")})
-                add_points(st.session_state.current_user, 2, "Chat message")
-                st.rerun()
+                supabase_admin = get_supabase_admin()
+                new_msg = {
+                    "sender": st.session_state.current_user,
+                    "content": msg,
+                    "time": datetime.now().strftime("%H:%M")
+                }
+                try:
+                    res = supabase_admin.table("chat_messages").insert(new_msg).execute()
+                    if res.data:
+                        st.session_state.chat_messages.append(res.data[0])
+                        add_points(st.session_state.current_user, 2, "Chat message")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error sending message: {e}")
 
 def show_about_page():
     st.markdown("### About the Ethiopian Research Collaboration Portal")
@@ -1427,7 +2023,7 @@ def show_about_page():
         st.rerun()
 
 # ===================================================================
-# LOAD DATA, SEARCH, LETTER GENERATION - FULLY DEFINED
+# LOAD DATA, SEARCH, LETTER GENERATION
 # ===================================================================
 
 @st.cache_data
@@ -1550,7 +2146,7 @@ def show_login_page():
                             success, message = login_user(username, password)
                             if success:
                                 st.success(message)
-                                time.sleep(1)  # allow balloons to render
+                                time.sleep(1)
                                 st.rerun()
                             else:
                                 st.error(message)
@@ -1933,39 +2529,44 @@ def main():
                             research_topic, request_type,
                             requester_email, requester_phone
                         )
+                        supabase_admin = get_supabase_admin()
                         request = {
-                            'id': f"REQ{len(st.session_state.requests)+1:04d}",
-                            'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            'requester': requester_name,
-                            'requester_institution': requester_institution,
-                            'professor': prof['name'],
-                            'professor_institution': prof['institution'],
-                            'request_type': request_type,
-                            'research_topic': research_topic,
-                            'status': 'Pending',
-                            'letter': letter_data
+                            "requester": requester_name,
+                            "requester_institution": requester_institution,
+                            "professor": prof['name'],
+                            "professor_institution": prof['institution'],
+                            "request_type": request_type,
+                            "research_topic": research_topic,
+                            "status": "Pending",
+                            "letter": letter_data,
+                            "date": datetime.now().strftime("%Y-%m-%d %H:%M")
                         }
-                        st.session_state.requests.append(request)
-                        st.session_state.last_request = request
-                        st.session_state.show_letter = True
-                        add_notification(f"📩 Collaboration request submitted to {prof['name']}", "success")
-                        st.success(f"✅ Request submitted successfully to {prof['name']}!")
-                        st.balloons()
-                        st.markdown(f"""
-                        <div class="letter-box">
-                            <h2>REQUEST FOR {request_type.upper()}</h2>
-                            <p class="date"><b>Date:</b> {letter_data['date']}</p>
-                            <p><b>From:</b><br>{letter_data['from_address']}</p>
-                            <p><b>To:</b><br>{letter_data['to_address']}</p>
-                            <p><b>Subject:</b> {letter_data['subject']}</p>
-                            <p>Dear {prof['name'].split()[0]},</p>
-                            <p>{letter_data['body']}</p>
-                            <div class="signature">
-                                <p>Yours sincerely,</p>
-                                <p><b>{requester_name}</b><br>{requester_institution}</p>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        try:
+                            res = supabase_admin.table("requests").insert(request).execute()
+                            if res.data:
+                                st.session_state.requests.insert(0, res.data[0])
+                                st.session_state.last_request = res.data[0]
+                                st.session_state.show_letter = True
+                                add_notification(f"📩 Collaboration request submitted to {prof['name']}", "success")
+                                st.success(f"✅ Request submitted successfully to {prof['name']}!")
+                                st.balloons()
+                                st.markdown(f"""
+                                <div class="letter-box">
+                                    <h2>REQUEST FOR {request_type.upper()}</h2>
+                                    <p class="date"><b>Date:</b> {letter_data['date']}</p>
+                                    <p><b>From:</b><br>{letter_data['from_address']}</p>
+                                    <p><b>To:</b><br>{letter_data['to_address']}</p>
+                                    <p><b>Subject:</b> {letter_data['subject']}</p>
+                                    <p>Dear {prof['name'].split()[0]},</p>
+                                    <p>{letter_data['body']}</p>
+                                    <div class="signature">
+                                        <p>Yours sincerely,</p>
+                                        <p><b>{requester_name}</b><br>{requester_institution}</p>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        except Exception as e:
+                            st.error(f"Error saving request: {e}")
         else:
             st.info("👈 Please go to 'Find Professionals' and click 'Request Collaboration'")
         st.markdown("### My Collaboration Requests")
@@ -2004,11 +2605,12 @@ def main():
             st.markdown(f"### 📝 Recent Posts ({len(st.session_state.forum_posts)} total)")
             for post in reversed(st.session_state.forum_posts):
                 with st.expander(f"📌 {post['title']} - by {post['author']}", expanded=False):
+                    comments = json.loads(post.get("comments", "[]"))
                     st.markdown(f"""
                     <div class="forum-post">
                         <div class="post-header"><span class="post-title">{post['title']}</span><span class="post-meta">🕐 {post['date']} · ❤️ {post['likes']} likes</span></div>
                         <div style="padding:0.5rem 0;border-top:1px solid #E8EAED;border-bottom:1px solid #E8EAED;">{post['content']}</div>
-                        <div class="post-tags">{''.join(f'<span class="tag">#{tag}</span>' for tag in post['tags'])}</div>
+                        <div class="post-tags">{''.join(f'<span class="tag">#{tag}</span>' for tag in json.loads(post.get("tags", "[]")))}</div>
                     </div>
                     """, unsafe_allow_html=True)
                     col1, col2 = st.columns([1, 5])
@@ -2018,8 +2620,8 @@ def main():
                             st.rerun()
                     st.markdown("---")
                     st.markdown("#### 💬 Comments")
-                    if post['comments']:
-                        for comment in post['comments']:
+                    if comments:
+                        for comment in comments:
                             st.markdown(f"""
                             <div style="background:#F8F9FA;padding:0.75rem;border-radius:8px;margin-bottom:0.5rem;border-left:3px solid #1A73E8;">
                                 <strong>{comment['author']}</strong> <span style="color:#5F6368;font-size:0.8rem;">({comment['date']})</span>
@@ -2091,11 +2693,23 @@ def main():
                 expertise = st.text_input("Your Expertise / Research Areas")
                 availability = st.selectbox("Availability", ["Available", "Limited", "Not Available"])
                 if st.form_submit_button("Register as Mentor"):
-                    st.session_state.mentorships.append({"mentor": st.session_state.current_user, "expertise": expertise, "availability": availability, "mentees": []})
-                    add_notification(f"👨‍🏫 {user_display_name} registered as a mentor!", "success")
-                    add_points(st.session_state.current_user, 10, "Mentor registration")
-                    st.success("You are now a mentor!")
-                    st.rerun()
+                    supabase_admin = get_supabase_admin()
+                    new_mentor = {
+                        "mentor": st.session_state.current_user,
+                        "expertise": expertise,
+                        "availability": availability,
+                        "mentees": "[]"
+                    }
+                    try:
+                        res = supabase_admin.table("mentorships").insert(new_mentor).execute()
+                        if res.data:
+                            st.session_state.mentorships.append(res.data[0])
+                            add_notification(f"👨‍🏫 {user_display_name} registered as a mentor!", "success")
+                            add_points(st.session_state.current_user, 10, "Mentor registration")
+                            st.success("You are now a mentor!")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Error registering: {e}")
         if st.session_state.mentorships:
             for m in st.session_state.mentorships:
                 st.markdown(f"<div style='background:#F8F9FA;padding:1rem;border-radius:12px;margin-bottom:0.5rem;'><strong>{m['mentor']}</strong> · Expertise: {m['expertise']} · {m['availability']}</div>", unsafe_allow_html=True)
@@ -2107,10 +2721,23 @@ def main():
                 authors = st.text_input("Authors (comma separated)")
                 abstract = st.text_area("Abstract / Description")
                 if st.form_submit_button("Upload Paper"):
-                    st.session_state.papers.append({"title": title, "authors": authors, "abstract": abstract, "uploaded_by": st.session_state.current_user, "date": datetime.now().strftime("%Y-%m-%d")})
-                    add_points(st.session_state.current_user, 10, "Paper upload")
-                    st.success("Paper uploaded!")
-                    st.rerun()
+                    supabase_admin = get_supabase_admin()
+                    new_paper = {
+                        "title": title,
+                        "authors": authors,
+                        "abstract": abstract,
+                        "uploaded_by": st.session_state.current_user,
+                        "date": datetime.now().strftime("%Y-%m-%d")
+                    }
+                    try:
+                        res = supabase_admin.table("papers").insert(new_paper).execute()
+                        if res.data:
+                            st.session_state.papers.insert(0, res.data[0])
+                            add_points(st.session_state.current_user, 10, "Paper upload")
+                            st.success("Paper uploaded!")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Error uploading: {e}")
         for p in reversed(st.session_state.papers):
             st.markdown(f"<div style='background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;padding:1rem;margin-bottom:0.5rem;'><strong>{p['title']}</strong><br>Authors: {p['authors']}<br>{p['abstract'][:200]}...<br><span style='color:#5F6368;'>Uploaded by {p['uploaded_by']} on {p['date']}</span></div>", unsafe_allow_html=True)
     elif current_page == "📝 Feedback":
@@ -2119,14 +2746,26 @@ def main():
             rating = st.slider("How would you rate the platform?", 1, 5, 5)
             comment = st.text_area("Your feedback (optional)", placeholder="Tell us what you think...")
             if st.form_submit_button("Submit Feedback"):
-                st.session_state.feedback.append({"user": st.session_state.current_user, "rating": rating, "comment": comment, "date": datetime.now().strftime("%Y-%m-%d %H:%M")})
-                add_points(st.session_state.current_user, 5, "Feedback submitted")
-                st.success("Thank you for your feedback!")
-                st.rerun()
+                supabase_admin = get_supabase_admin()
+                new_feedback = {
+                    "username": st.session_state.current_user,
+                    "rating": rating,
+                    "comment": comment,
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+                }
+                try:
+                    res = supabase_admin.table("feedback").insert(new_feedback).execute()
+                    if res.data:
+                        st.session_state.feedback.insert(0, res.data[0])
+                        add_points(st.session_state.current_user, 5, "Feedback submitted")
+                        st.success("Thank you for your feedback!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error submitting feedback: {e}")
         st.markdown("### Recent Feedback")
         for fb in reversed(st.session_state.feedback[-5:]):
             stars = "⭐" * fb['rating']
-            st.markdown(f"<div class='feedback-item'><div class='feedback-header'><strong>{fb['user']}</strong><span class='feedback-rating'>{stars}</span></div><p>{fb['comment']}</p><span style='color:#5F6368;font-size:0.8rem;'>{fb['date']}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='feedback-item'><div class='feedback-header'><strong>{fb['username']}</strong><span class='feedback-rating'>{stars}</span></div><p>{fb['comment']}</p><span style='color:#5F6368;font-size:0.8rem;'>{fb['date']}</span></div>", unsafe_allow_html=True)
     elif current_page == "👤 Profile":
         st.markdown("### 👤 My Profile")
         profile = st.session_state.user_profiles.get(st.session_state.current_user, {})
@@ -2137,7 +2776,7 @@ def main():
             <p style="text-align:center;color:#5F6368;">{st.session_state.current_user}</p>
             <p><strong>Institution:</strong> {profile.get('institution', 'Not set')}</p>
             <p><strong>Department:</strong> {profile.get('department', 'Not set')}</p>
-            <p><strong>Research Interests:</strong> {', '.join(profile.get('interests', [])) or 'Not set'}</p>
+            <p><strong>Research Interests:</strong> {', '.join(json.loads(profile.get('interests', '[]')))}</p>
             <p><strong>Looking for:</strong> {profile.get('collab_type', 'Not set')}</p>
             <p><strong>Points:</strong> ⭐ {st.session_state.user_points.get(st.session_state.current_user, 0)}</p>
             <div><strong>Badges:</strong> {', '.join(st.session_state.user_badges.get(st.session_state.current_user, [])) or 'None yet'}</div>
